@@ -1,0 +1,370 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+    line-height: 1.6;
+    color: #ffffff;
+    background: #0a0b0d;
+    min-height: 100vh;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px;
+}
+
+header {
+    background: #0a0b0d;
+    padding: 1rem 0;
+    border-bottom: 1px solid #1a1d21;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.logo-link {
+    display: flex;
+    align-items: center;
+    text-decoration: none;
+}
+
+.logo {
+    height: 32px;
+    transition: opacity 0.3s ease;
+}
+
+.logo:hover {
+    opacity: 0.8;
+}
+
+.nav-links {
+    display: flex;
+    list-style: none;
+    gap: 2rem;
+}
+
+.nav-links a {
+    text-decoration: none;
+    color: #ffffff;
+    font-weight: 500;
+    transition: color 0.3s ease;
+    font-size: 0.95rem;
+}
+
+.nav-links a:hover {
+    color: #ffff00;
+}
+
+.hero {
+    text-align: center;
+    padding: 6rem 0 4rem;
+    background: linear-gradient(135deg, #0a0b0d 0%, #1a1d21 100%);
+}
+
+.hero h1 {
+    font-size: 4rem;
+    margin-bottom: 1.5rem;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 1.1;
+}
+
+.hero .highlight {
+    color: #ffff00;
+}
+
+.hero p {
+    font-size: 1.25rem;
+    margin-bottom: 2.5rem;
+    max-width: 700px;
+    margin-left: auto;
+    margin-right: auto;
+    color: #b0b6c1;
+    font-weight: 400;
+}
+
+.cta-button {
+    display: inline-block;
+    background: #ffff00;
+    color: #0a0b0d;
+    padding: 1rem 2rem;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 1.1rem;
+    transition: all 0.3s ease;
+    border: none;
+    cursor: pointer;
+}
+
+.cta-button:hover {
+    background: #f0f000;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(255, 255, 0, 0.3);
+}
+
+.features {
+    background: #0f1114;
+    padding: 4rem 0;
+}
+
+.section-title {
+    text-align: center;
+    font-size: 2.75rem;
+    margin-bottom: 3rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+}
+
+.features-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    gap: 2rem;
+}
+
+.feature-card {
+    background: #1a1d21;
+    padding: 2.5rem;
+    border-radius: 12px;
+    border: 1px solid #2a2d31;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.feature-card:hover {
+    border-color: #ffff00;
+    transform: translateY(-5px);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+}
+
+.feature-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, #ffff00, #f0f000);
+    transform: scaleX(0);
+    transition: transform 0.3s ease;
+}
+
+.feature-card:hover::before {
+    transform: scaleX(1);
+}
+
+.feature-icon {
+    font-size: 2.5rem;
+    margin-bottom: 1.5rem;
+    color: #ffff00;
+}
+
+.feature-card h3 {
+    font-size: 1.4rem;
+    margin-bottom: 1rem;
+    font-weight: 600;
+    color: #ffffff;
+}
+
+.feature-card p {
+    color: #b0b6c1;
+    line-height: 1.6;
+}
+
+.stats {
+    background: #0a0b0d;
+    padding: 4rem 0;
+    text-align: center;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 3rem;
+    margin-top: 3rem;
+}
+
+.stat-card {
+    padding: 1.5rem;
+}
+
+.stat-number {
+    font-size: 3rem;
+    font-weight: 800;
+    color: #ffff00;
+    margin-bottom: 0.5rem;
+}
+
+.stat-label {
+    color: #b0b6c1;
+    font-size: 1rem;
+    font-weight: 500;
+}
+
+.subscription-section {
+    background: #1a1d21;
+    padding: 5rem 0;
+    position: relative;
+}
+
+.subscription-content {
+    max-width: 800px;
+    margin: 0 auto;
+    text-align: center;
+}
+
+.subscription-section h2 {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    font-weight: 700;
+    color: #ffffff;
+}
+
+.subscription-section p {
+    font-size: 1.25rem;
+    margin-bottom: 2.5rem;
+    color: #b0b6c1;
+}
+
+.subscription-form {
+    background: #0f1114;
+    padding: 3rem;
+    border-radius: 16px;
+    margin-top: 2rem;
+    border: 1px solid #2a2d31;
+    text-align: left;
+}
+
+.form-group {
+    margin-bottom: 2rem;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 0.75rem;
+    font-weight: 600;
+    color: #ffffff;
+    font-size: 0.95rem;
+}
+
+.form-group input,
+.form-group select {
+    width: 100%;
+    padding: 1rem;
+    border: 2px solid #2a2d31;
+    border-radius: 8px;
+    font-size: 1rem;
+    background: #1a1d21;
+    color: #ffffff;
+    transition: all 0.3s ease;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+    outline: none;
+    border-color: #ffff00;
+    box-shadow: 0 0 0 3px rgba(255, 255, 0, 0.1);
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+}
+
+.submit-btn {
+    background: #ffff00;
+    color: #0a0b0d;
+    padding: 1rem 2rem;
+    border: none;
+    border-radius: 8px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    width: 100%;
+}
+
+.submit-btn:hover {
+    background: #f0f000;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(255, 255, 0, 0.3);
+}
+
+.submit-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.success-message {
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: white;
+    padding: 1.25rem;
+    border-radius: 8px;
+    margin-top: 1.5rem;
+    display: none;
+    font-weight: 500;
+}
+
+.trusted-by {
+    background: #0f1114;
+    padding: 3rem 0;
+    text-align: center;
+}
+
+.trusted-companies {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 3rem;
+    margin-top: 2rem;
+    flex-wrap: wrap;
+}
+
+.company-logo {
+    color: #666;
+    font-size: 1.25rem;
+    font-weight: 600;
+    opacity: 0.7;
+    transition: opacity 0.3s ease;
+}
+
+.company-logo:hover {
+    opacity: 1;
+    color: #ffff00;
+}
+
+@media (max-width: 768px) {
+    .hero h1 {
+        font-size: 2.5rem;
+    }
+    
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+    
+    .nav-links {
+        display: none;
+    }
+
+    .subscription-form {
+        padding: 2rem;
+    }
+
+    .features-grid {
+        grid-template-columns: 1fr;
+    }
+}

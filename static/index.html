@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ClickHouse - The Fastest Analytical Database</title>
+    <link rel="stylesheet" href="css/clickhouse_css.css">
+</head>
+<body>
+    <header>
+        <nav class="container">
+            <a href="#" class="logo-link">
+                <img src="https://cdn.brandfetch.io/idnezyZEJm/theme/light/idGhgeQm90.svg?c=1bxid64Mup7aczewSAYMX&t=1739283415708" alt="ClickHouse" class="logo">
+            </a>
+            <ul class="nav-links">
+                <li><a href="#features">Features</a></li>
+                <li><a href="#performance">Performance</a></li>
+                <li><a href="#subscribe">Subscribe</a></li>
+                <li><a href="#docs">Docs</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main>
+        <section class="hero">
+            <div class="container">
+                <h1>The <span class="highlight">fastest</span><br>analytical database</h1>
+                <p>ClickHouse is the fastest and most resource efficient real-time data warehouse and open-source database for powering your analytics applications.</p>
+                <a href="#subscribe" class="cta-button">Get Started Free</a>
+            </div>
+        </section>
+
+        <section class="trusted-by">
+            <div class="container">
+                <h3 style="color: #666; font-weight: 500; margin-bottom: 1rem;">Trusted by industry leaders</h3>
+                <div class="trusted-companies">
+                    <div class="company-logo">Anthropic</div>                    
+                    <div class="company-logo">Lyft</div>
+                    <div class="company-logo">Sony</div>
+                    <div class="company-logo">Cisco</div>
+                    <div class="company-logo">GitLab</div>
+                    <div class="company-logo">Uber</div>
+                </div>
+            </div>
+        </section>
+
+        <section class="features" id="features">
+            <div class="container">
+                <h2 class="section-title">Why ClickHouse?</h2>
+                <div class="features-grid">
+                    <div class="feature-card" data-feature="performance">
+                        <div class="feature-icon">⚡</div>
+                        <h3>Blazing Fast</h3>
+                        <p>Ultimate query performance that your mission-critical and time-sensitive applications can depend on. Process billions of rows in milliseconds.</p>
+                    </div>
+                    <div class="feature-card" data-feature="developer-friendly">
+                        <div class="feature-icon">💻</div>
+                        <h3>Developer Friendly</h3>
+                        <p>Built to ensure that even the most sophisticated data analysis can be done intuitively, using simple SQL.</p>
+                    </div>
+                    <div class="feature-card" data-feature="cost-effective">
+                        <div class="feature-icon">💰</div>
+                        <h3>Cost Effective</h3>
+                        <p>Best-in-class compression ratios that reduce storage and accelerate performance, keeping your costs low.</p>
+                    </div>
+                    <div class="feature-card" data-feature="scalable">
+                        <div class="feature-icon">📈</div>
+                        <h3>Proven at Scale</h3>
+                        <p>Scale horizontally across hundreds of nodes while maintaining linear performance improvements. Handle petabyte-scale datasets.</p>
+                    </div>
+                    <div class="feature-card" data-feature="opensource">
+                        <div class="feature-icon">🌟</div>
+                        <h3>Open Source</h3>
+                        <p>Fully open-source with an active community. Deploy anywhere - on your machine, in the cloud, or as a managed service.</p>
+                    </div>
+                    <div class="feature-card" data-feature="integrations">
+                        <div class="feature-icon">🔗</div>
+                        <h3>100+ Integrations</h3>
+                        <p>Choose from our growing ecosystem of integrations for data ingestion, visualization, language clients, and more.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="stats" id="performance">
+            <div class="container">
+                <h2 class="section-title">Performance That Delivers</h2>
+                <p style="font-size: 1.25rem; color: #b0b6c1; max-width: 600px; margin: 0 auto;">Column-oriented databases are better suited to OLAP scenarios. They are at least 100x faster in processing most queries.</p>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-number">100x</div>
+                        <div class="stat-label">Faster than traditional databases</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">1B+</div>
+                        <div class="stat-label">Rows processed per second</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">90%</div>
+                        <div class="stat-label">Compression ratio achieved</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">1000+</div>
+                        <div class="stat-label">Companies trust ClickHouse</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="subscription-section" id="subscribe">
+            <div class="container">
+                <div class="subscription-content">
+                    <h2>Stay Updated</h2>
+                    <p>Get the latest news, updates, and event invitations from the ClickHouse community.</p>
+                    
+                    <form class="subscription-form" id="subscriptionForm">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="name">Full Name *</label>
+                                <input type="text" id="name" name="name" required placeholder="Enter your full name">
+                            </div>
+                            <div class="form-group">
+                                <label for="company">Company</label>
+                                <input type="text" id="company" name="company" placeholder="Your company name">
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="email">Email Address *</label>
+                            <input type="email" id="email" name="email" required placeholder="your.email@company.com">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="source">How did you find out about ClickHouse? *</label>
+                            <select id="source" name="source" required>
+                                <option value="">Please select...</option>
+                                <option value="webinar">Webinar</option>
+                                <option value="in-person-event">In-person event</option>
+                                <option value="ads">Advertisements</option>
+                                <option value="web-research">Researching the web</option>
+                                <option value="llm-suggestion">Suggested by an LLM</option>
+                                <option value="others">Others</option>
+                            </select>
+                        </div>
+                        
+                        <button type="submit" class="submit-btn" id="submitBtn">
+                            Subscribe to Updates
+                        </button>
+                        
+                        <div class="success-message" id="successMessage" style="display: none;">
+                            🎉 Thank you for subscribing! You'll receive updates and event invitations soon.
+                        </div>
+                        
+                        <div class="error-message" id="errorMessage" style="display: none;">
+                            ❌ There was an error processing your subscription. Please try again.
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </section>
+    </main>
+    
+    <script src="//www.unpkg.com/@hyperdx/browser@0.21.0/build/index.js"></script>
+    <script>
+        window.HyperDX.init({
+            // apiKey: '60a1f8d8-7b50-491e-b729-c0636626d6f3', //local
+            apiKey: 'dc9af94f-d4bb-4572-a174-621e72447246', //remote
+            service: 'my-frontend-app',
+            // url: 'http://localhost:4318', local
+            url: 'http://ec2-35-95-48-144.us-west-2.compute.amazonaws.com:4318',
+            consoleCapture: true,
+            advancedNetworkCapture: true,
+            disableReplay: false        
+        });
+
+        // Handle form submission
+        document.getElementById('subscriptionForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const form = e.target;
+            const submitBtn = document.getElementById('submitBtn');
+            const successMessage = document.getElementById('successMessage');
+            const errorMessage = document.getElementById('errorMessage');
+            
+            // Hide previous messages
+            successMessage.style.display = 'none';
+            errorMessage.style.display = 'none';
+            
+            // Show loading state
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Subscribing...';
+            
+            // Collect form data
+            const formData = {
+                name: document.getElementById('name').value.trim(),
+                company: document.getElementById('company').value.trim(),
+                email: document.getElementById('email').value.trim(),
+                source: document.getElementById('source').value
+            };
+            
+            try {
+                const response = await fetch('/api/subscribe', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(formData)
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok && result.success) {
+                    // Show success message
+                    successMessage.style.display = 'block';
+                    form.reset(); // Clear the form
+                    
+                    // Track successful submission with HyperDX TBD
+                    // if (window.HyperDX) {
+                    //     window.HyperDX.addUserAction('form_submit_success', {
+                    //         email: formData.email,
+                    //         source: formData.source
+                    //     });
+                    // }
+                } else {
+                    // Show error message
+                    errorMessage.textContent = result.error || 'An unexpected error occurred.';
+                    errorMessage.style.display = 'block';
+                    
+                    // Track error with HyperDX TBD
+                    // if (window.HyperDX) {
+                    //     window.HyperDX.addUserAction('form_submit_error', {
+                    //         error: result.error
+                    //     });
+                    // }
+                }
+            } catch (error) {
+                console.error('Form submission error:', error);
+                errorMessage.textContent = 'Network error. Please check your connection and try again.';
+                errorMessage.style.display = 'none';
+                
+                // Track network error with HyperDX TBD
+                // if (window.HyperDX) {
+                //     window.HyperDX.addUserAction('form_submit_network_error', {
+                //         error: error.message
+                //     });
+                // }
+            } finally {
+                // Reset button state
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Subscribe to Updates';
+            }
+        });
+    </script>
+    
+</body>
+</html>
