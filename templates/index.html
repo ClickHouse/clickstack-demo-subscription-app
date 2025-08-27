@@ -162,12 +162,12 @@
     
     <script src="//www.unpkg.com/@hyperdx/browser@0.21.0/build/index.js"></script>
     <script>
+        // HyperDX Configuration from server
+        const hyperdxConfig = {{ hyperdx_config | tojson | safe}};
         window.HyperDX.init({
-            // apiKey: '60a1f8d8-7b50-491e-b729-c0636626d6f3', //local
-            apiKey: 'dc9af94f-d4bb-4572-a174-621e72447246', //remote
-            service: 'my-frontend-app',
-            // url: 'http://localhost:4318', local
-            url: 'http://ec2-35-95-48-144.us-west-2.compute.amazonaws.com:4318',
+            apiKey: hyperdxConfig.api_key,
+            service: hyperdxConfig.service_name,            
+            url: hyperdxConfig.endpoint,
             consoleCapture: true,
             advancedNetworkCapture: true,
             disableReplay: false        

@@ -1,0 +1,52 @@
+services:
+  flask-app:
+    build: .
+    container_name: flask-subscription-app
+    ports:
+      - "8000:8000" # Change if you want to change the FLASK_PORT below and/or also the external PORT
+    environment:
+      # AWS Configuration
+      - AWS_DEFAULT_REGION=us-west-2  # Change to your AWS region
+      
+      # Parameter Store Configuration
+      - PARAMETER_STORE_PREFIX=/caio-hyperdx-demo/frontend
+      
+      # ClickHouse Configuration (fallback values if Parameter Store is unavailable)
+      - CLICKHOUSE_HOST=localhost
+      - CLICKHOUSE_PORT=8123
+      - CLICKHOUSE_USERNAME=default
+      - CLICKHOUSE_PASSWORD=
+      - CLICKHOUSE_DATABASE=default
+
+      # HyperDX Configuration (fallback values if Parameter Store is unavailable)
+      - HYPERDX_API_KEY=your-api-key-here
+      - HYPERDX_SERVICE_NAME=my-frontend-app
+      - HYPERDX_ENDPOINT=https://in-otel.hyperdx.io
+
+      #Clickhouse table name where subscriptions sent by form will be stored, in case you want to customize it
+      - CLICKHOUSE_TABLE_NAME=subscriptions
+      
+      # Flask Application Configuration
+      - FLASK_HOST=0.0.0.0
+      - FLASK_PORT=8000
+      - FLASK_DEBUG=false
+      
+      # Logging Configuration
+      - LOG_LEVEL=INFO
+      
+    volumes:
+      # Mount AWS credentials if not using IAM roles
+      # - ~/.aws/credentials:/home/appuser/.aws/credentials:ro
+      - ./logs:/app/logs
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"

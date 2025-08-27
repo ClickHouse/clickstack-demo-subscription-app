@@ -1,38 +1,288 @@
-# hyperdx_demo
+# ClickHouse Subscription App
 
-This is a front end application that can send telemetry to HyperDX collector.
+A Flask-based web application that showcases ClickHouse features while collecting user subscriptions. The app is fully instrumented with HyperDX OpenTelemetry for observability and monitoring.
 
-## How to deploy
+## Overview
 
-1. Deploy HyperDX All-in-One
-2. Deploy the front-end application
+This project demonstrates:
+- **ClickHouse Integration**: Stores subscription data in a ClickHouse database
+- **HyperDX Observability**: Full OpenTelemetry instrumentation for monitoring and debugging, both in front-end (browser) and back-end (Python)
 
-### Local
+## Architecture
 
-Life is easy on local mode, not much to configure
+```
+┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
+│   Web Browser   │───▶│   Flask App      │───▶│   ClickHouse    │
+│                 │    │  (Port 8000)     │    │   Database      │
+└─────────────────┘    └──────────────────┘    └─────────────────┘
+                                │
+                                ▼
+                       ┌──────────────────┐    ┌─────────────────┐
+                       │     HyperDX      │───▶│   ClickHouse    │
+                       │  (Observability) │    │   Database      │
+                       └──────────────────┘    └─────────────────┘
+```
 
-1. I recommend using Docker to deploy all-in-one with a single line command `docker run -p 8080:8080 -p 4317:4317 -p 4318:4318 --name hyperdx docker.hyperdx.io/hyperdx/hyperdx-all-in-one:2.2.1`
-2. Go to http://localhost:8080 and configure HyperDX
-3. Get the API-Key from the team settings
-4. Add the API-Key on index.html in L167
-5. Do `pip install -r requirements.txt` (I recommend using venv)
-6. Do `python3 flask_app.py`
-7. Go to http://localhost:8000
-8. Have fun
+## Prerequisites
 
-### Remote (AWS ec2)
+- Docker and Docker Compose
+- AWS CLI configured (for Parameter Store access)
+- ClickHouse database instance
+- HyperDX OTEL collector (recommended to deploy [HyperDX All in one](https://clickhouse.com/docs/use-cases/observability/clickstack/deployment/all-in-one))
 
-1. Create EC2 instance and make sure it has access to internet, and doors 8080, 8000 and 4318 are open to the world wide web
-2. Get your ec2 dns name, or a proper dns name if you have one
-3. SSH into the ec2 and `docker run -p 8080:8080 -p 4317:4317 -p 4318:4318 -e FRONTEND_URL={{EC2_DNS}}:8080 -e NEXT_PUBLIC_OTEL_EXPORTER_OTLP_ENDPOINT={{EC2_DNS}}:4318 --name hyperdx docker.hyperdx.io/hyperdx/hyperdx-all-in-one:2.2.1` replacing the ECS_DNS with whatever it is
-4. Go to http://{{EC2_DNS}}:8080 and configure HyperDX
-5. Get the API-Key from the team settings
-6. Add the API-Key on index.html in L167
-7. Do `pip install -r requirements.txt`
-8. Do `python3 flask_app.py`
-9. Go to http://{{EC2_DNS}}:8000
-10. Have fun
+## Quick Start
 
-## TODO
-- Configure ClickHouse Cloud (instead of local)
-- Actually create a deploy pattern, with enviroment variables and stuff
+Set all configurations before deploying
+
+1. **Clone and Configure**
+   ```bash
+   git clone <your-repo>
+   cd clickhouse-subscription-app
+   ```
+
+2. **Deploy**
+   ```bash
+   chmod +x deploy.sh
+   ./deploy.sh
+   ```
+
+3. **Access Application**
+   - Local: http://localhost:8000
+   - Cloud: http://YOUR_PUBLIC_IP:8000
+
+## Configuration
+
+### Required Parameters
+
+Configure these parameters before deployment:
+
+#### 1. AWS Configuration (optional: if using Parameter Store)
+```bash
+# In docker-compose.yml or .env
+AWS_DEFAULT_REGION=us-west-2  # Change to your AWS region
+```
+
+#### 2. Parameter Store Prefix (optional: if using Parameter Store)
+```bash
+PARAMETER_STORE_PREFIX=/caio-hyperdx-demo/frontend  # Change to your prefix
+```
+
+#### 3. ClickHouse Database Settings
+
+This will be used to create an API route to store form submitted data into Clickhouse. These don't need to be the same used for HyperDX later on.
+
+`username` must have CREATE permissions on `database`
+
+**Option A: Use AWS Parameter Store (Recommended for AWS Deployment)**
+```bash
+# Set these parameters in AWS Parameter Store:
+/your-prefix/clickhouse/host        # ClickHouse server hostname
+/your-prefix/clickhouse/port        # Usually 8443 for ClickHouse Cloud
+/your-prefix/clickhouse/username    # Database username
+/your-prefix/clickhouse/password    # Database password
+/your-prefix/clickhouse/database    # Database name
+```
+
+**Option B: Use Environment Variables (Recommended for local deployment only)**
+```bash
+# In docker-compose.yml or .env (.env will override anything you set in docker-compose.yml)
+CLICKHOUSE_HOST=your-clickhouse-host
+CLICKHOUSE_PORT=8123
+CLICKHOUSE_USERNAME=default
+CLICKHOUSE_PASSWORD=your-password
+CLICKHOUSE_DATABASE=your-database
+```
+
+#### 4. HyperDX Observability Settings
+
+These will be used to send telemetry to HyperDX. Instructions to setup HyperDX can be found in [HyperDX Collector setup with ClickHouse Cloud](#hyperdx-collector-setup-with-clickhouse-cloud)
+
+**Option A: Use AWS Parameter Store (Recommended)**
+```bash
+# Set these parameters in AWS Parameter Store:
+/your-prefix/hyperdx/api_key       # Your HyperDX API key
+/your-prefix/hyperdx/service_name  # Service identifier for HyperDX
+/your-prefix/hyperdx/endpoint      # Usually https://in-otel.hyperdx.io
+```
+
+**Option B: Use Environment Variables**
+```bash
+# In docker-compose.yml or .env
+HYPERDX_API_KEY=your-hyperdx-api-key
+HYPERDX_SERVICE_NAME=my-subscription-app
+HYPERDX_ENDPOINT=https://in-otel.hyperdx.io
+```
+
+### Optional Configuration
+
+```bash
+# Application settings
+FLASK_PORT=8000                    # Change if port 8000 is occupied. Remember to change ports: in docker-compose.yml as well
+FLASK_DEBUG=false                  # Set to true for development
+LOG_LEVEL=INFO                     # DEBUG, INFO, WARNING, ERROR
+
+# Database table name
+CLICKHOUSE_TABLE_NAME=subscriptions  # Customize table name
+```
+
+## HyperDX Collector setup with ClickHouse Cloud
+Setting up HyperDX Collector is required for this demo. Deploying the entire HyperDX setup is optional, but it is simpler
+
+```bash
+docker run -p 8080:8080 -p 4317:4317 -p 4318:4318 \
+    -e FRONTEND_URL={YOUR_INSTANCE_IP_OR_URL}:8080 \
+    -e CLICKHOUSE_ENDPOINT=instance.us-west-2.aws.clickhouse.cloud:8443 \
+    -e CLICKHOUSE_USER=default \
+    -e CLICKHOUSE_PASSWORD=password \
+    -e HYPERDX_OTEL_EXPORTER_CLICKHOUSE_DATABASE=hyperdx \
+    --name hyperdx \
+    docker.hyperdx.io/hyperdx/hyperdx-all-in-one:2.2.1
+```
+This setup will use a Clickhouse instance you provide. The CLICKHOUSE_USER must have CREATE permission in HYPERDX_OTEL_EXPORTER_CLICKHOUSE_DATABASE
+
+After deployment, go to {YOUR_INSTANCE_IP_OR_URL}:8080 and setup HyperDX for the first time, and grab the API key under Team Settings.
+
+The HYPERDX_ENDPOINT will be {YOUR_INSTANCE_IP_OR_URL}:4318
+
+To use HyperDX UI, you can either use this deployment as well, or configure [ClickStack Cloud](https://clickhouse.com/docs/use-cases/observability/clickstack/deployment/hyperdx-clickhouse-cloud) (recommended). 
+
+Eventually ClickStack will also have the OTEL Collector, and this step will be irrelevant (just grab API key from ClickStack)
+
+## AWS Parameter Store Setup
+
+Refer to [AWS documentation](https://docs.aws.amazon.com/systems-manager/latest/userguide/sysman-paramstore-su-create.html) to create the parameters in Parameter Store
+
+We recommend creating an [instance profile](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_use_switch-role-ec2_instance-profiles.html) with permissions to your parameters, and using it on the EC2 you will use to host this app
+
+## Deployment Options
+
+### Local Development
+```bash
+# Install dependencies
+pip install -r requirements.txt
+
+#run app
+python flask_app.py
+```
+
+### Docker Deployment
+```bash
+./deploy.sh
+```
+
+### Cloud Deployment (AWS EC2 Example)
+```bash
+# 1. Launch EC2 instance with appropriate IAM role
+# 2. Install Docker
+sudo yum update -y
+sudo yum install docker -y
+sudo systemctl start docker
+sudo usermod -a -G docker ec2-user #or ubuntu, depending on which image you're using
+
+# 3. Install Docker Compose
+sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+sudo chmod +x /usr/local/bin/docker-compose
+
+# 4. Deploy your app
+git clone <your-repo>
+cd clickhouse-subscription-app
+./deploy.sh
+```
+
+## Project Structure
+
+```
+clickhouse-subscription-app/
+├── deploy.sh              # Deployment script
+├── docker-compose.yml     # Docker configuration
+├── Dockerfile            # Container build instructions
+├── flask_app.py          # Main Flask application
+├── requirements.txt      # Python dependencies
+├── .env                  # Environment variables (create this)
+├── templates/
+│   └── index.html        # Main web page template
+├── static/
+│   └── css/
+│       └── clickhouse_css.css
+└── logs/                 # Application logs (auto-created)
+```
+
+## Troubleshooting
+
+### Common Issues
+
+**1. Database Connection Failed**
+```bash
+# Check ClickHouse connectivity
+docker exec flask-subscription-app python -c "
+import clickhouse_connect
+client = clickhouse_connect.get_client(host='YOUR_HOST')
+print('Connected successfully!')
+"
+```
+
+**2. Parameter Store Access Denied**
+- Ensure your AWS credentials have `ssm:GetParameter` permissions
+- Check that parameter names match your `PARAMETER_STORE_PREFIX`
+
+**3. HyperDX Not Receiving Data**
+- Verify your `HYPERDX_API_KEY` is correct
+- Check network connectivity to `HYPERDX_ENDPOINT`
+- Review browser console for JavaScript errors
+
+**4. Port Already in Use**
+```bash
+# Change port in docker-compose.yml
+ports:
+  - "8001:8000"  # Use port 8001 instead
+```
+
+### Viewing Logs
+```bash
+# Application logs
+docker compose logs -f flask-app
+
+# ClickHouse query logs (if enabled)
+tail -f logs/app.log
+```
+
+### Health Checks
+```bash
+# Quick health check
+curl http://localhost:8000/health
+
+# Subscriber statistics
+curl http://localhost:8000/api/subscribers
+```
+
+### Making Changes
+- Frontend: Edit `templates/index.html` and `static/css/`
+- Backend: Modify `flask_app.py`
+- Configuration: Update `docker-compose.yml` or `.env`
+
+## Security Considerations
+
+- **Never commit secrets**: Use Parameter Store or environment variables
+- **Network Security**: Restrict ClickHouse access to your application
+- **Input Validation**: All form inputs are validated and sanitized
+- **Container Security**: Application runs as non-root user
+
+## Performance Notes
+
+- **ClickHouse**: Optimized for analytical workloads, excellent for time-series data
+- **Flask**: Suitable for moderate traffic; consider Gunicorn for production
+- **Docker**: Resource limits can be configured in docker-compose.yml
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit changes (`git commit -m 'Add amazing feature'`)
+4. Push to branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## Support
+
+- **ClickHouse Documentation**: https://clickhouse.com/docs
+- **HyperDX Documentation**: https://docs.hyperdx.io
+- **Flask Documentation**: https://flask.palletsprojects.com
