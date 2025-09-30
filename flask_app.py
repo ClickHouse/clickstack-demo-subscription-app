@@ -87,10 +87,11 @@ def setup_hyperdx():
         os.environ['OTEL_EXPORTER_OTLP_ENDPOINT'] = config['HYPERDX_ENDPOINT']
         
         # Enable advanced network capture if desired
-        # os.environ['HYPERDX_ENABLE_ADVANCED_NETWORK_CAPTURE'] = '1'
+        os.environ['HYPERDX_ENABLE_ADVANCED_NETWORK_CAPTURE'] = '1'        
         
         # Configure HyperDX OpenTelemetry
         configure_opentelemetry()
+        
         logger.info("HyperDX OpenTelemetry configured successfully")
         return True
     except Exception as e:
@@ -228,7 +229,7 @@ def subscribe():
         )
         client.close()
         
-        logger.info(f"New subscription from {insert_data[0][0]} ({insert_data[0][2]}) via {insert_data[0][3]}")
+        logger.info(f"New subscription from ******** via {insert_data[0][3]}")
         
         return jsonify({
             'success': True,
