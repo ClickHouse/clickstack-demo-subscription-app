@@ -45,10 +45,10 @@ def get_parameter_store_value(parameter_name, default_value=None):
 def load_config():
     """Load configuration from AWS Parameter Store or environment variables"""
     config = {}
-    
+
     # Get parameter store prefix from environment variable
     param_prefix = os.getenv('PARAMETER_STORE_PREFIX', '/caio-hyperdx-demo/frontend')
-    
+
     # Define parameter mappings (Parameter Store suffix -> config key -> default value)
     parameters = {
         # ClickHouse configuration
@@ -57,13 +57,14 @@ def load_config():
         '/clickhouse/username': ('CLICKHOUSE_USERNAME', 'default'),
         '/clickhouse/password': ('CLICKHOUSE_PASSWORD', ''),
         '/clickhouse/database': ('CLICKHOUSE_DATABASE', 'default'),
-        
+
         # HyperDX configuration
         '/hyperdx/api_key': ('HYPERDX_API_KEY', ''),
         '/hyperdx/service_name': ('HYPERDX_SERVICE_NAME', 'flask-subscription-app'),
-        '/hyperdx/endpoint': ('HYPERDX_ENDPOINT', 'https://in-otel.hyperdx.io')
+        '/hyperdx/endpoint': ('HYPERDX_ENDPOINT', 'https://in-otel.hyperdx.io'),
+        '/hyperdx/browser_endpoint': ('HYPERDX_BROWSER_ENDPOINT', 'https://in-otel.hyperdx.io')
     }
-    
+
     for param_suffix, (env_key, default_value) in parameters.items():
         try:
             # First try Parameter Store
@@ -85,10 +86,10 @@ def setup_hyperdx():
         os.environ['HYPERDX_API_KEY'] = config['HYPERDX_API_KEY']
         os.environ['OTEL_SERVICE_NAME'] = 'my-backend-app'
         os.environ['OTEL_EXPORTER_OTLP_ENDPOINT'] = config['HYPERDX_ENDPOINT']
-        
+
         # Enable advanced network capture if desired
         # os.environ['HYPERDX_ENABLE_ADVANCED_NETWORK_CAPTURE'] = '1'
-        
+
         # Configure HyperDX OpenTelemetry
         configure_opentelemetry()
         logger.info("HyperDX OpenTelemetry configured successfully")
@@ -111,6 +112,7 @@ CLICKHOUSE_DATABASE = config['CLICKHOUSE_DATABASE']
 HYPERDX_API_KEY = config['HYPERDX_API_KEY']
 HYPERDX_SERVICE_NAME = config['HYPERDX_SERVICE_NAME']
 HYPERDX_ENDPOINT = config['HYPERDX_ENDPOINT']
+HYPERDX_BROWSER_ENDPOINT = config['HYPERDX_BROWSER_ENDPOINT']
 
 # Other configurable values
 TABLE_NAME = os.getenv('CLICKHOUSE_TABLE_NAME', 'subscriptions')
@@ -143,7 +145,7 @@ def init_database():
     if not client:
         logger.error("Cannot initialize database - no ClickHouse connection")
         return False
-    
+
     try:
         # Create table for storing form submissions
         create_table_query = f"""
@@ -158,7 +160,7 @@ def init_database():
         ) ENGINE = MergeTree()
         ORDER BY submitted_at
         """
-        
+
         client.command(create_table_query)
         logger.info(f"Database table '{TABLE_NAME}' initialized successfully")
         return True
@@ -175,7 +177,8 @@ def index():
     hyperdx_config = {
         'api_key': HYPERDX_API_KEY,
         'service_name': HYPERDX_SERVICE_NAME,
-        'endpoint': HYPERDX_ENDPOINT
+        'endpoint': HYPERDX_ENDPOINT,
+        'browser_endpoint': HYPERDX_BROWSER_ENDPOINT
     }
     return render_template('index.html', hyperdx_config=hyperdx_config)
 
@@ -187,7 +190,7 @@ def subscribe():
         # Get JSON data from request
         data = request.get_json()
         logger.debug(f"Received subscription data: {data}")
-        
+
         # Validate required fields
         required_fields = ['name', 'email', 'source']
         for field in required_fields:
@@ -197,11 +200,11 @@ def subscribe():
                     'success': False,
                     'error': f'Missing required field: {field}'
                 }), 400
-        
+
         # Get client IP address
         client_ip = request.environ.get('HTTP_X_FORWARDED_FOR', request.remote_addr)
         logger.debug(f"Client IP: {client_ip}")
-        
+
         # Connect to ClickHouse
         client = get_clickhouse_client()
         if not client:
@@ -210,7 +213,7 @@ def subscribe():
                 'success': False,
                 'error': 'Database connection failed'
             }), 500
-        
+
         # Insert data into ClickHouse
         insert_data = [[
             data.get('name', '').strip(),
@@ -220,21 +223,21 @@ def subscribe():
             datetime.now(),
             client_ip
         ]]
-        
+
         client.insert(
-            TABLE_NAME, 
+            TABLE_NAME,
             insert_data,
             column_names=['name', 'company', 'email', 'source', 'submitted_at', 'ip_address']
         )
         client.close()
-        
+
         logger.info(f"New subscription from {insert_data[0][0]} ({insert_data[0][2]}) via {insert_data[0][3]}")
-        
+
         return jsonify({
             'success': True,
             'message': 'Successfully subscribed to updates!'
         })
-        
+
     except Exception as e:
         logger.error(f"Error processing subscription: {e}")
         return jsonify({
@@ -251,31 +254,31 @@ def get_subscribers():
         if not client:
             logger.error("Database connection failed during stats retrieval")
             return jsonify({'error': 'Database connection failed'}), 500
-        
+
         # Get basic statistics
         total_subscribers = client.command(f'SELECT COUNT(*) FROM {TABLE_NAME}')
         logger.debug(f"Total subscribers: {total_subscribers}")
-        
+
         # Get subscribers by source
         source_stats = client.query(
             f'SELECT source, COUNT(*) as count FROM {TABLE_NAME} GROUP BY source ORDER BY count DESC'
         ).result_rows
         logger.debug(f"Source statistics: {source_stats}")
-        
+
         # Get recent subscribers (last 7 days)
         recent_subscribers = client.command(
             f'SELECT COUNT(*) FROM {TABLE_NAME} WHERE submitted_at >= now() - INTERVAL 7 DAY'
         )
         logger.debug(f"Recent subscribers (7 days): {recent_subscribers}")
-        
+
         client.close()
-        
+
         return jsonify({
             'total_subscribers': total_subscribers,
             'recent_subscribers': recent_subscribers,
             'source_breakdown': [{'source': row[0], 'count': row[1]} for row in source_stats]
         })
-        
+
     except Exception as e:
         logger.error(f"Error getting subscriber stats: {e}")
         return jsonify({'error': 'Failed to retrieve statistics'}), 500

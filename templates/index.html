@@ -34,7 +34,7 @@
             <div class="container">
                 <h3 style="color: #666; font-weight: 500; margin-bottom: 1rem;">Trusted by industry leaders</h3>
                 <div class="trusted-companies">
-                    <div class="company-logo">Anthropic</div>                    
+                    <div class="company-logo">Anthropic</div>
                     <div class="company-logo">Lyft</div>
                     <div class="company-logo">Sony</div>
                     <div class="company-logo">Cisco</div>
@@ -112,7 +112,7 @@
                 <div class="subscription-content">
                     <h2>Stay Updated</h2>
                     <p>Get the latest news, updates, and event invitations from the ClickHouse community.</p>
-                    
+
                     <form class="subscription-form" id="subscriptionForm">
                         <div class="form-row">
                             <div class="form-group">
@@ -124,12 +124,12 @@
                                 <input type="text" id="company" name="company" placeholder="Your company name">
                             </div>
                         </div>
-                        
+
                         <div class="form-group">
                             <label for="email">Email Address *</label>
                             <input type="email" id="email" name="email" required placeholder="your.email@company.com">
                         </div>
-                        
+
                         <div class="form-group">
                             <label for="source">How did you find out about ClickHouse? *</label>
                             <select id="source" name="source" required>
@@ -142,15 +142,15 @@
                                 <option value="others">Others</option>
                             </select>
                         </div>
-                        
+
                         <button type="submit" class="submit-btn" id="submitBtn">
                             Subscribe to Updates
                         </button>
-                        
+
                         <div class="success-message" id="successMessage" style="display: none;">
                             🎉 Thank you for subscribing! You'll receive updates and event invitations soon.
                         </div>
-                        
+
                         <div class="error-message" id="errorMessage" style="display: none;">
                             ❌ There was an error processing your subscription. Please try again.
                         </div>
@@ -159,7 +159,7 @@
             </div>
         </section>
     </main>
-    
+
     <script src="//www.unpkg.com/@hyperdx/browser@0.21.0/build/index.js"></script>
     <script>
         // HyperDX Configuration from server
@@ -167,7 +167,7 @@
         window.HyperDX.init({
             apiKey: hyperdxConfig.api_key,
             service: hyperdxConfig.service_name,            
-            url: hyperdxConfig.endpoint,
+            url: hyperdxConfig.browser_endpoint,
             consoleCapture: true,
             advancedNetworkCapture: true,
             disableReplay: false        
@@ -251,6 +251,6 @@
             }
         });
     </script>
-    
+
 </body>
 </html>
