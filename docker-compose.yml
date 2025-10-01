@@ -52,7 +52,7 @@ services:
       - HYPERDX_API_KEY=your-api-key-here
       - HYPERDX_SERVICE_NAME=my-frontend-app
       - HYPERDX_ENDPOINT=http://clickstack:4318
-      - HYPERDX_BROWSER_ENDPOINT=http://localhost:4318
+      - HYPERDX_BROWSER_ENDPOINT=http://clickstack:4318
 
       #Clickhouse table name where subscriptions sent by form will be stored, in case you want to customize it
       - CLICKHOUSE_TABLE_NAME=subscriptions
@@ -78,6 +78,25 @@ services:
         max-file: "3"
     depends_on:
       clickhouse-server:
+        condition: service_started
+
+  load-generator:
+    build: ./load-generator
+    container_name: load-generator
+    deploy:
+      resources:
+        limits:
+          memory: 1500M
+    restart: unless-stopped
+    environment:
+      - LOCUST_WEB_PORT=8081
+      - LOCUST_USERS=5
+      - LOCUST_HOST=http://flask-app:8000
+      - LOCUST_HEADLESS=true
+      - LOCUST_AUTOSTART=true
+      - LOCUST_WEB_HOST=0.0.0.0
+    depends_on:
+      flask-app:
         condition: service_started
 
 networks:
