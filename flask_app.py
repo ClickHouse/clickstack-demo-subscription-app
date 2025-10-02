@@ -190,8 +190,9 @@ def subscribe():
     try:
         # Get JSON data from request
         data = request.get_json()
-        logger.debug(f"Received subscription data: {data}")
-
+        #sanatizing 
+        logger.debug(f"Received subscription data with fields: {data.keys()}")
+        
         # Validate required fields
         required_fields = ['name', 'email', 'source']
         for field in required_fields:
