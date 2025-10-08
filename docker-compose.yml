@@ -50,9 +50,11 @@ services:
 
       # HyperDX Configuration (fallback values if Parameter Store is unavailable)
       - HYPERDX_API_KEY=fe2ea173-d528-4c9a-9501-a7053afffbb3
+      - OTEL_SERVICE_NAME=my-backend-app
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://clickstack:4318
+      - HYPERDX_ENABLE_ADVANCED_NETWORK_CAPTURE=1
       - HYPERDX_SERVICE_NAME=my-frontend-app
       - HYPERDX_ENDPOINT=http://clickstack:4318
-      - HYPERDX_BROWSER_ENDPOINT=http://clickstack:4318
 
       #Clickhouse table name where subscriptions sent by form will be stored, in case you want to customize it
       - CLICKHOUSE_TABLE_NAME=subscriptions

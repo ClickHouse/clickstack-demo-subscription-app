@@ -60,9 +60,11 @@ def load_config():
 
         # HyperDX configuration
         '/hyperdx/api_key': ('HYPERDX_API_KEY', ''),
-        '/hyperdx/service_name': ('HYPERDX_SERVICE_NAME', 'flask-subscription-app'),
-        '/hyperdx/endpoint': ('HYPERDX_ENDPOINT', 'https://in-otel.hyperdx.io'),
-        '/hyperdx/browser_endpoint': ('HYPERDX_BROWSER_ENDPOINT', 'https://in-otel.hyperdx.io')
+        '/hyperdx/otel_service_name': ('OTEL_SERVICE_NAME', 'my-backend-app'),
+        '/hyperdx/otel_endpoint': ('OTEL_EXPORTER_OTLP_ENDPOINT', 'https://in-otel.hyperdx.io'),
+        '/hyperdx/adv_net_cap': ('HYPERDX_ENABLE_ADVANCED_NETWORK_CAPTURE', 1),
+        '/hyperdx/service_name': ('HYPERDX_SERVICE_NAME', 'my-frontend-app'),
+        '/hyperdx/endpoint': ('HYPERDX_ENDPOINT', 'https://in-otel.hyperdx.io')
     }
 
     for param_suffix, (env_key, default_value) in parameters.items():
@@ -79,26 +81,6 @@ def load_config():
             logger.info(f"Using environment variable for {env_key}")
     return config
 
-def setup_hyperdx():
-    """Configure HyperDX OpenTelemetry instrumentation"""
-    try:
-        # Set environment variables for OpenTelemetry
-        os.environ['HYPERDX_API_KEY'] = config['HYPERDX_API_KEY']
-        os.environ['OTEL_SERVICE_NAME'] = 'my-backend-app'
-        os.environ['OTEL_EXPORTER_OTLP_ENDPOINT'] = config['HYPERDX_ENDPOINT']
-
-        # Enable advanced network capture if desired
-        os.environ['HYPERDX_ENABLE_ADVANCED_NETWORK_CAPTURE'] = '1'        
-        
-        # Configure HyperDX OpenTelemetry
-        configure_opentelemetry()
-        
-        logger.info("HyperDX OpenTelemetry configured successfully")
-        return True
-    except Exception as e:
-        logger.error(f"Failed to configure HyperDX: {e}")
-        return False
-
 # Load configuration
 config = load_config()
 
@@ -111,18 +93,17 @@ CLICKHOUSE_DATABASE = config['CLICKHOUSE_DATABASE']
 
 # HyperDX configuration
 HYPERDX_API_KEY = config['HYPERDX_API_KEY']
+OTEL_SERVICE_NAME = config['OTEL_SERVICE_NAME']
+OTEL_EXPORTER_OTLP_ENDPOINT = config['OTEL_EXPORTER_OTLP_ENDPOINT']
+HYPERDX_ENABLE_ADVANCED_NETWORK_CAPTURE = config['HYPERDX_ENABLE_ADVANCED_NETWORK_CAPTURE']
 HYPERDX_SERVICE_NAME = config['HYPERDX_SERVICE_NAME']
 HYPERDX_ENDPOINT = config['HYPERDX_ENDPOINT']
-HYPERDX_BROWSER_ENDPOINT = config['HYPERDX_BROWSER_ENDPOINT']
 
 # Other configurable values
 TABLE_NAME = os.getenv('CLICKHOUSE_TABLE_NAME', 'subscriptions')
 APP_HOST = os.getenv('FLASK_HOST', '0.0.0.0')
 APP_PORT = int(os.getenv('FLASK_PORT', '8000'))
 FLASK_DEBUG = os.getenv('FLASK_DEBUG', 'False').lower() in ('true', '1', 'yes', 'on')
-
-# Initialize HyperDX
-setup_hyperdx()
 
 def get_clickhouse_client():
     """Get ClickHouse client connection"""
@@ -178,8 +159,7 @@ def index():
     hyperdx_config = {
         'api_key': HYPERDX_API_KEY,
         'service_name': HYPERDX_SERVICE_NAME,
-        'endpoint': HYPERDX_ENDPOINT,
-        'browser_endpoint': HYPERDX_BROWSER_ENDPOINT
+        'endpoint': HYPERDX_ENDPOINT
     }
     return render_template('index.html', hyperdx_config=hyperdx_config)
 
