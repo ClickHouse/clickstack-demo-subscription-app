@@ -10,6 +10,7 @@ services:
       - ./clickstack/db:/data/db
       - ./clickstack/ch_data:/var/lib/clickhouse
       - ./clickstack/ch_logs:/var/log/clickhouse-server
+
   clickhouse-server:
     image: clickhouse/clickhouse-server:latest
     container_name: clickhouse-server
@@ -31,6 +32,7 @@ services:
       CLICKHOUSE_PASSWORD: changeme
       CLICKHOUSE_DB: default
       CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1 # Enable SQL-driven access control for the default user
+
   flask-app:
     build: .
     container_name: flask-subscription-app
@@ -49,7 +51,7 @@ services:
       - CLICKHOUSE_DATABASE=default
 
       # HyperDX Configuration (fallback values if Parameter Store is unavailable)
-      - HYPERDX_API_KEY=fe2ea173-d528-4c9a-9501-a7053afffbb3
+      - HYPERDX_API_KEY=your-api-key-here
       - OTEL_SERVICE_NAME=my-backend-app
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://clickstack:4318
       - HYPERDX_ENABLE_ADVANCED_NETWORK_CAPTURE=1
@@ -95,6 +97,28 @@ services:
       - LOCUST_WEB_HOST=0.0.0.0
     depends_on:
       flask-app:
+        condition: service_started
+
+  socat:
+    image: alpine/socat
+    container_name: socat
+    command: tcp-listen:2375,fork,reuseaddr unix-connect:/var/run/docker.sock
+    user: root
+    volumes:
+      - type: bind
+        source: /var/run/docker.sock
+        target: /var/run/docker.sock
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib
+    container_name: otel-collector
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./otel-collector-config.yaml:/etc/otelcol-contrib/config.yaml
+    depends_on:
+      socat:
+        condition: service_started
+      clickstack:
         condition: service_started
 
 networks:
