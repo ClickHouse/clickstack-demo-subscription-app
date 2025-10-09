@@ -15,7 +15,7 @@ This project demonstrates:
 │   Web Browser   │───▶│   Flask App      │───▶│   ClickHouse    │
 │                 │    │  (Port 8000)     │    │   Database      │
 └─────────────────┘    └──────────────────┘    └─────────────────┘
-                                │
+                                │ OTel data
                                 ▼
                        ┌──────────────────┐    ┌─────────────────┐
                        │     HyperDX      │───▶│   ClickHouse    │
@@ -39,6 +39,8 @@ Set all configurations before deploying
    git clone <your-repo>
    cd clickhouse-subscription-app
    ```
+
+   Change the file `docker-compose.yml` with your settings. Alternativaly, create a .env file with your configurations (recommended for local mode only)
 
 2. **Deploy**
    ```bash
@@ -138,21 +140,21 @@ docker run -p 8080:8080 -p 4317:4317 -p 4318:4318 \
     --name hyperdx \
     docker.hyperdx.io/hyperdx/hyperdx-all-in-one:2.2.1
 ```
-This setup will use a Clickhouse instance you provide. The CLICKHOUSE_USER must have CREATE permission in HYPERDX_OTEL_EXPORTER_CLICKHOUSE_DATABASE
+This setup will use a Clickhouse instance you provide. The CLICKHOUSE_USER must have CREATE permission in HYPERDX_OTEL_EXPORTER_CLICKHOUSE_DATABASE.
 
 After deployment, go to {YOUR_INSTANCE_IP_OR_URL}:8080 and setup HyperDX for the first time, and grab the API key under Team Settings.
 
-The HYPERDX_ENDPOINT will be {YOUR_INSTANCE_IP_OR_URL}:4318
+The HYPERDX_ENDPOINT will be {YOUR_INSTANCE_IP_OR_URL}:4318.
 
 To use HyperDX UI, you can either use this deployment as well, or configure [ClickStack Cloud](https://clickhouse.com/docs/use-cases/observability/clickstack/deployment/hyperdx-clickhouse-cloud) (recommended). 
 
-Eventually ClickStack will also have the OTEL Collector, and this step will be irrelevant (just grab API key from ClickStack)
+Eventually ClickStack will also have the OTEL Collector, and this step will be irrelevant (just grab API key from ClickStack).
 
 ## AWS Parameter Store Setup
 
-Refer to [AWS documentation](https://docs.aws.amazon.com/systems-manager/latest/userguide/sysman-paramstore-su-create.html) to create the parameters in Parameter Store
+Refer to [AWS documentation](https://docs.aws.amazon.com/systems-manager/latest/userguide/sysman-paramstore-su-create.html) to create the parameters in Parameter Store.
 
-We recommend creating an [instance profile](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_use_switch-role-ec2_instance-profiles.html) with permissions to your parameters, and using it on the EC2 you will use to host this app
+We recommend creating an [instance profile](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_use_switch-role-ec2_instance-profiles.html) with permissions to your parameters, and using it on the EC2 you will use to host this app.
 
 ## Deployment Options
 
@@ -189,18 +191,41 @@ cd clickhouse-subscription-app
 ./deploy.sh
 ```
 
+### Instrumenting EC2
+
+To instrument EC2 to collect metrics (e.g. CPU, RAM), you need to change the `ec2_config.yaml` file, to put your hyperdx collector endpoint, API key, and change your service name (optional).
+
+To actually instrument there are 2 options.
+
+#### Instrumenting EC2 directly
+```bash
+./instrument_ec2.sh
+```
+
+#### Instrumenting EC2 via deploy.sh
+```bash
+./deploy.sh --instrument_ec2
+```
+
+By adding `--instrument_ec2` flag, the deployment will include the EC2 instrumentation
+
 ## Project Structure
 
 ```
 clickhouse-subscription-app/
-├── deploy.sh              # Deployment script
-├── docker-compose.yml     # Docker configuration
-├── Dockerfile            # Container build instructions
-├── flask_app.py          # Main Flask application
-├── requirements.txt      # Python dependencies
-├── .env                  # Environment variables (create this)
+├── deploy.sh                # Deployment script
+├── docker-compose.yml       # Docker configuration
+├── Dockerfile               # Container build instructions
+├── ec2_config.yaml          # Config for EC2 Otel Collector for metrics (optional)
+├── flask_app.py             # Main Flask application
+├── requirements.txt         # Python dependencies
+├── instrument_ec2.sh        # Script to instrument EC2 metrics (optional)
+├── .env                     # Environment variables (create this)
 ├── templates/
-│   └── index.html        # Main web page template
+│   └── index.html           # Main web page template
+├── modules/
+│   └── __init__.py          # Blank init
+│   └── helper_functions.py  # Centralizing functions not related to flask
 ├── static/
 │   └── css/
 │       └── clickhouse_css.css
@@ -237,6 +262,17 @@ ports:
   - "8001:8000"  # Use port 8001 instead
 ```
 
+**5. Cheching if EC2 collector is working**
+```bash
+sudo journalctl -u otelcol-contrib -f
+```
+
+Running this will give you more insights whether data is being sent, or if there are any error logs.
+
+**6. Application maintenance**
+
+This is meant to be a mock application. If you plan to host it for long periods of time, pay attention to disk usage, especially system logs
+
 ### Viewing Logs
 ```bash
 # Application logs
@@ -245,6 +281,8 @@ docker compose logs -f flask-app
 # ClickHouse query logs (if enabled)
 tail -f logs/app.log
 ```
+
+Application logs will be sent to HyperDX, therefore if the setup was successful, you can track from there.
 
 ### Health Checks
 ```bash

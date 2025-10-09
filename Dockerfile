@@ -36,6 +36,7 @@ COPY .env* .
 # Copy static files
 COPY static/ static/
 COPY templates/ templates/
+COPY modules/ modules/
 
 # Create non-root user for security
 RUN adduser --disabled-password --gecos '' appuser \
