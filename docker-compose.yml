@@ -33,6 +33,9 @@ services:
       
       # Logging Configuration
       - LOG_LEVEL=INFO
+
+      # Enable Docker instrumentation (can be true, yes, ok, 1, false, no, 0)
+      - ENABLE_DOCKER_INSTRUMENTATION=true
       
     volumes:
       # Mount AWS credentials if not using IAM roles
