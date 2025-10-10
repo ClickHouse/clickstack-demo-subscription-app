@@ -89,6 +89,25 @@ services:
       clickhouse-server:
         condition: service_started
 
+  golang-app:
+    build: ./broken
+    container_name: golang-app
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 100M
+    ports:
+      - 8001:8001
+    environment:
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://clickstack:4318
+      - OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf
+      - OTEL_SERVICE_NAME=my-app
+      - OTEL_EXPORTER_OTLP_HEADERS=authorization=your-api-key-here
+    depends_on:
+      flask-app:
+        condition: service_started
+
   load-generator:
     build: ./load-generator
     container_name: load-generator
