@@ -19,7 +19,7 @@ services:
       - 9000:9000 # Native client port
       - 9009:9009 # Interserver communication
     volumes:
-      - ./config.xml:/etc/clickhouse-server/config.d/config.xml
+      - ./config/clickhouse-server/config.xml:/etc/clickhouse-server/config.d/config.xml
       - ./clickhouse/data:/var/lib/clickhouse
       - ./clickhouse/logs:/var/log/clickhouse-server
       - ./clickhouse/users:/etc/clickhouse-server/users.d
@@ -68,7 +68,7 @@ services:
 
       # Logging Configuration
       - LOG_LEVEL=INFO
-      
+
     volumes:
       # Mount AWS credentials if not using IAM roles
       # - ~/.aws/credentials:/home/appuser/.aws/credentials:ro
@@ -86,6 +86,8 @@ services:
         max-size: "10m"
         max-file: "3"
     depends_on:
+      clickstack:
+        condition: service_started
       clickhouse-server:
         condition: service_started
 
@@ -105,6 +107,8 @@ services:
       - OTEL_SERVICE_NAME=my-app
       - OTEL_EXPORTER_OTLP_HEADERS=authorization=your-api-key-here
     depends_on:
+      clickstack:
+        condition: service_started
       flask-app:
         condition: service_started
 
@@ -138,7 +142,7 @@ services:
     container_name: otel-collector
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - ./otel-collector-config.yaml:/etc/otelcol-contrib/config.yaml
+      - ./config/otel-collector/otel-collector-config.yaml:/etc/otelcol-contrib/config.yaml
     depends_on:
       socat:
         condition: service_started
