@@ -16,7 +16,7 @@
                 <li><a href="#features">Features</a></li>
                 <li><a href="#performance">Performance</a></li>
                 <li><a href="#subscribe">Subscribe</a></li>
-                <li><a href="#docs">Docs</a></li>
+                <li><a id="docs-link" href="#docs">Docs</a></li>
             </ul>
         </nav>
     </header>
@@ -171,6 +171,20 @@
             consoleCapture: true,
             advancedNetworkCapture: true,
             disableReplay: false        
+        });
+
+        document.getElementById('docs-link').addEventListener('click', async function(e) {
+            try {
+                const response = await fetch('/break');
+                const result = await response.json();
+                console.log(result)
+                window.location.href = "https://clickhouse.com/docs";
+            } catch (error) {
+                console.error('Docs link error:', error);
+                errorMessage.textContent = 'Network error. Please check your connection and try again.';
+                errorMessage.style.display = 'none';
+            } finally {
+            }
         });
 
         // Handle form submission

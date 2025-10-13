@@ -33,10 +33,10 @@ def get_parameter_store_value(parameter_name, logger, region = None, default_val
 def load_config(logger, region = None):
     """Load configuration from AWS Parameter Store or environment variables"""
     config = {}
-    
+
     # Get parameter store prefix from environment variable
     param_prefix = os.getenv('PARAMETER_STORE_PREFIX', '/caio-hyperdx-demo/frontend')
-    
+
     # Define parameter mappings (Parameter Store suffix -> config key -> default value)
     parameters = {
         # ClickHouse configuration
@@ -45,16 +45,20 @@ def load_config(logger, region = None):
         '/clickhouse/username': ('CLICKHOUSE_USERNAME', 'default'),
         '/clickhouse/password': ('CLICKHOUSE_PASSWORD', ''),
         '/clickhouse/database': ('CLICKHOUSE_DATABASE', 'default'),
-        
+
         # HyperDX configuration
         '/hyperdx/api_key': ('HYPERDX_API_KEY', ''),
         '/hyperdx/otel_service_name': ('OTEL_SERVICE_NAME', 'my-backend-app'),
         '/hyperdx/otel_endpoint': ('OTEL_EXPORTER_OTLP_ENDPOINT', 'https://in-otel.hyperdx.io'),
         '/hyperdx/adv_net_cap': ('HYPERDX_ENABLE_ADVANCED_NETWORK_CAPTURE', 1),
         '/hyperdx/service_name': ('HYPERDX_SERVICE_NAME', 'flask-subscription-app'),
-        '/hyperdx/endpoint': ('HYPERDX_ENDPOINT', 'https://in-otel.hyperdx.io')
+        '/hyperdx/endpoint': ('HYPERDX_ENDPOINT', 'https://in-otel.hyperdx.io'),
+
+        # Golang app configuration
+        '/golangapp/host': ('GOLANG_APP_HOST', 'golang-app'),
+        '/golangapp/port': ('GOLANG_APP_PORT', '8001')
     }
-    
+
     for param_suffix, (env_key, default_value) in parameters.items():
         try:
             # First try Parameter Store

@@ -8,6 +8,7 @@ from botocore.exceptions import ClientError
 from dotenv import load_dotenv
 from hyperdx.opentelemetry import configure_opentelemetry
 from modules.helper_functions import get_parameter_store_value, load_config, setup_hyperdx
+import requests
 
 # Load environment variables from .env file
 load_dotenv(override=True)
@@ -45,6 +46,8 @@ TABLE_NAME = os.getenv('CLICKHOUSE_TABLE_NAME', 'subscriptions')
 APP_HOST = os.getenv('FLASK_HOST', '0.0.0.0')
 APP_PORT = int(os.getenv('FLASK_PORT', '8000'))
 FLASK_DEBUG = os.getenv('FLASK_DEBUG', 'False').lower() in ('true', '1', 'yes', 'on')
+GOLANG_APP_HOST = os.getenv('GOLANG_APP_HOST', 'golang-app')
+GOLANG_APP_PORT = int(os.getenv('GOLANG_APP_PORT', '8001'))
 
 # Initialize HyperDX
 setup_hyperdx(logger = logger)
@@ -208,6 +211,18 @@ def get_subscribers():
     except Exception as e:
         logger.error(f"Error getting subscriber stats: {e}")
         return jsonify({'error': 'Failed to retrieve statistics'}), 500
+
+@app.route('/break')
+def break_app():
+    """Break endpoint"""
+    golang_app_endpoint = f"http://{config['GOLANG_APP_HOST']}:{config['GOLANG_APP_PORT']}/break"
+    logger.debug("Simulate breaking the app")
+    try:
+        response = requests.get(golang_app_endpoint)
+        response.raise_for_status()
+        return response.json()
+    except requests.exceptions.RequestException as e:
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/health')
 def health_check():

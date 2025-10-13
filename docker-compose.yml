@@ -98,7 +98,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 100M
+          memory: 10M
     ports:
       - 8001:8001
     environment:
