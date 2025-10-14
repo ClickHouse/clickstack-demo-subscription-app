@@ -13,10 +13,10 @@
                 <img src="https://cdn.brandfetch.io/idnezyZEJm/theme/light/idGhgeQm90.svg?c=1bxid64Mup7aczewSAYMX&t=1739283415708" alt="ClickHouse" class="logo">
             </a>
             <ul class="nav-links">
-                <li><a href="#features">Features</a></li>
-                <li><a href="#performance">Performance</a></li>
-                <li><a href="#subscribe">Subscribe</a></li>
-                <li><a id="docs-link" href="#docs">Docs</a></li>
+                <div><li><a href="#features">Features</a></li></div>
+                <div><li><a href="#performance">Performance</a></li></div>
+                <div><li><a href="#subscribe">Subscribe</a></li></div>
+                <div id="docs-load"><li><a id="docs-link" href="#docs">Docs</a></li></div>
             </ul>
         </nav>
     </header>
@@ -175,10 +175,18 @@
 
         document.getElementById('docs-link').addEventListener('click', async function(e) {
             try {
+                this.style.visibility = 'hidden';
+                const loader = document.getElementById('docs-load');
+                loader.id = 'loading';
+                loader.classList.add("display");
                 const response = await fetch('/break');
                 const result = await response.json();
-                console.log(result)
-                window.location.href = "https://clickhouse.com/docs";
+                if (result.status == 'ok') {
+                    window.location.href = "https://clickhouse.com/docs";
+                }
+                loader.classList.remove("display");
+                loader.id = 'docs-load';
+                this.style.visibility = 'visible';
             } catch (error) {
                 console.error('Docs link error:', error);
                 errorMessage.textContent = 'Network error. Please check your connection and try again.';

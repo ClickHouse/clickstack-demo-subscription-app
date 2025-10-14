@@ -90,6 +90,8 @@ services:
         condition: service_started
       clickhouse-server:
         condition: service_started
+      golang-app:
+        condition: service_started
 
   golang-app:
     build: ./broken
@@ -108,8 +110,6 @@ services:
       - OTEL_EXPORTER_OTLP_HEADERS=authorization=your-api-key-here
     depends_on:
       clickstack:
-        condition: service_started
-      flask-app:
         condition: service_started
 
   load-generator:
