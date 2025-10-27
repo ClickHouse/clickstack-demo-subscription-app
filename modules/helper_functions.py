@@ -39,12 +39,12 @@ def load_config(logger, region = None):
 
     # Define parameter mappings (Parameter Store suffix -> config key -> default value)
     parameters = {
-        # ClickHouse configuration
-        '/clickhouse/host': ('CLICKHOUSE_HOST', 'localhost'),
-        '/clickhouse/port': ('CLICKHOUSE_PORT', '8123'),
-        '/clickhouse/username': ('CLICKHOUSE_USERNAME', 'default'),
-        '/clickhouse/password': ('CLICKHOUSE_PASSWORD', ''),
-        '/clickhouse/database': ('CLICKHOUSE_DATABASE', 'default'),
+        # PostgreSQL configuration
+        '/postgres/host': ('POSTGRES_HOST', 'localhost'),
+        '/postgres/port': ('POSTGRES_PORT', '5432'),
+        '/postgres/username': ('POSTGRES_USERNAME', 'postgres'),
+        '/postgres/password': ('POSTGRES_PASSWORD', ''),
+        '/postgres/database': ('POSTGRES_DATABASE', 'postgres'),
 
         # HyperDX configuration
         '/hyperdx/api_key': ('HYPERDX_API_KEY', ''),

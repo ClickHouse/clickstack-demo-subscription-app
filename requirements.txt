@@ -1,5 +1,5 @@
 Flask==3.1.2
-clickhouse-connect==0.8.18
+psycopg2-binary==2.9.11
 gunicorn==23.0.0
 boto3==1.40.16
 botocore==1.40.16

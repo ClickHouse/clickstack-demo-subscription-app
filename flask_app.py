@@ -1,5 +1,5 @@
 from flask import Flask, request, jsonify, send_from_directory, render_template
-import clickhouse_connect
+import psycopg2
 import logging
 from datetime import datetime
 import os
@@ -27,11 +27,11 @@ logger.setLevel(logging.DEBUG)
 config = load_config(logger = logger)
 
 # ClickHouse configuration
-CLICKHOUSE_HOST = config['CLICKHOUSE_HOST']
-CLICKHOUSE_PORT = int(config['CLICKHOUSE_PORT'])
-CLICKHOUSE_USERNAME = config['CLICKHOUSE_USERNAME']
-CLICKHOUSE_PASSWORD = config['CLICKHOUSE_PASSWORD']
-CLICKHOUSE_DATABASE = config['CLICKHOUSE_DATABASE']
+POSTGRES_HOST = config['POSTGRES_HOST']
+POSTGRES_PORT = int(config['POSTGRES_PORT'])
+POSTGRES_USERNAME = config['POSTGRES_USERNAME']
+POSTGRES_PASSWORD = config['POSTGRES_PASSWORD']
+POSTGRES_DATABASE = config['POSTGRES_DATABASE']
 
 # HyperDX configuration
 HYPERDX_API_KEY = config['HYPERDX_API_KEY']
@@ -42,7 +42,6 @@ HYPERDX_SERVICE_NAME = config['HYPERDX_SERVICE_NAME']
 HYPERDX_ENDPOINT = config['HYPERDX_ENDPOINT']
 
 # Other configurable values
-TABLE_NAME = os.getenv('CLICKHOUSE_TABLE_NAME', 'subscriptions')
 APP_HOST = os.getenv('FLASK_HOST', '0.0.0.0')
 APP_PORT = int(os.getenv('FLASK_PORT', '8000'))
 FLASK_DEBUG = os.getenv('FLASK_DEBUG', 'False').lower() in ('true', '1', 'yes', 'on')
@@ -52,52 +51,21 @@ GOLANG_APP_PORT = int(os.getenv('GOLANG_APP_PORT', '8001'))
 # Initialize HyperDX
 setup_hyperdx(logger = logger)
 
-def get_clickhouse_client():
-    """Get ClickHouse client connection"""
+def get_psql_connection():
+    """Get PostgreSQL client connection"""
     try:
-        client = clickhouse_connect.get_client(
-            host=CLICKHOUSE_HOST,
-            port=CLICKHOUSE_PORT,
-            username=CLICKHOUSE_USERNAME,
-            password=CLICKHOUSE_PASSWORD,
-            database=CLICKHOUSE_DATABASE
+        conn = psycopg2.connect(
+            database=POSTGRES_DATABASE,
+            user=POSTGRES_USERNAME,
+            password=POSTGRES_PASSWORD,
+            host=POSTGRES_HOST,
+            port=POSTGRES_PORT
         )
-        logger.info("Successfully connected to ClickHouse")
-        return client
+        logger.info("Successfully connected to PostgreSQL")
+        return conn
     except Exception as e:
-        logger.error(f"Failed to connect to ClickHouse: {e}")
+        logger.error(f"Failed to connect to PostgreSQL: {e}")
         return None
-
-def init_database():
-    """Initialize the database table for subscriptions"""
-    client = get_clickhouse_client()
-    if not client:
-        logger.error("Cannot initialize database - no ClickHouse connection")
-        return False
-
-    try:
-        # Create table for storing form submissions
-        create_table_query = f"""
-        CREATE TABLE IF NOT EXISTS {TABLE_NAME} (
-            id UUID DEFAULT generateUUIDv4(),
-            name String,
-            company String,
-            email String,
-            source String,
-            submitted_at DateTime DEFAULT now(),
-            ip_address String
-        ) ENGINE = MergeTree()
-        ORDER BY submitted_at
-        """
-
-        client.command(create_table_query)
-        logger.info(f"Database table '{TABLE_NAME}' initialized successfully")
-        return True
-    except Exception as e:
-        logger.error(f"Failed to initialize database: {e}")
-        return False
-    finally:
-        client.close()
 
 @app.route('/')
 def index():
@@ -112,14 +80,14 @@ def index():
 
 @app.route('/api/subscribe', methods=['POST'])
 def subscribe():
-    """Handle form submissions and store in ClickHouse"""
+    """Handle form submissions and store in Postgres"""
     logger.info("Processing subscription request")
     try:
         # Get JSON data from request
         data = request.get_json()
         #sanatizing 
         logger.debug(f"Received subscription data with fields: {data.keys()}")
-        
+
         # Validate required fields
         required_fields = ['name', 'email', 'source']
         for field in required_fields:
@@ -134,34 +102,42 @@ def subscribe():
         client_ip = request.environ.get('HTTP_X_FORWARDED_FOR', request.remote_addr)
         logger.debug(f"Client IP: {client_ip}")
 
-        # Connect to ClickHouse
-        client = get_clickhouse_client()
-        if not client:
+        conn = get_psql_connection()
+        if not conn:
             logger.error("Database connection failed during subscription")
             return jsonify({
                 'success': False,
                 'error': 'Database connection failed'
             }), 500
 
-        # Insert data into ClickHouse
-        insert_data = [[
+        cursor = conn.cursor()
+
+        insert_data = (
             data.get('name', '').strip(),
             data.get('company', '').strip(),
             data.get('email', '').strip().lower(),
             data.get('source', '').strip(),
-            datetime.now(),
-            client_ip
-        ]]
-
-        client.insert(
-            TABLE_NAME,
-            insert_data,
-            column_names=['name', 'company', 'email', 'source', 'submitted_at', 'ip_address']
+            datetime.now()
         )
-        client.close()
-        
+
+        insert_query = """
+            INSERT INTO users (name, company, email, source, submitted_at)
+            VALUES (%s, %s, %s, %s, %s)
+            ON CONFLICT (email) DO UPDATE SET
+                name = EXCLUDED.name,
+                company = EXCLUDED.company,
+                source = EXCLUDED.source,
+                submitted_at = EXCLUDED.submitted_at;
+        """
+
+        cursor.execute(insert_query, insert_data)
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+
         logger.info(f"New subscription from ******** via {insert_data[0][3]}")
-        
+
         return jsonify({
             'success': True,
             'message': 'Successfully subscribed to updates!'
@@ -173,44 +149,6 @@ def subscribe():
             'success': False,
             'error': 'An error occurred while processing your subscription'
         }), 500
-
-@app.route('/api/subscribers', methods=['GET'])
-def get_subscribers():
-    """Get subscriber statistics (optional endpoint for admin)"""
-    logger.info("Fetching subscriber statistics")
-    try:
-        client = get_clickhouse_client()
-        if not client:
-            logger.error("Database connection failed during stats retrieval")
-            return jsonify({'error': 'Database connection failed'}), 500
-
-        # Get basic statistics
-        total_subscribers = client.command(f'SELECT COUNT(*) FROM {TABLE_NAME}')
-        logger.debug(f"Total subscribers: {total_subscribers}")
-
-        # Get subscribers by source
-        source_stats = client.query(
-            f'SELECT source, COUNT(*) as count FROM {TABLE_NAME} GROUP BY source ORDER BY count DESC'
-        ).result_rows
-        logger.debug(f"Source statistics: {source_stats}")
-
-        # Get recent subscribers (last 7 days)
-        recent_subscribers = client.command(
-            f'SELECT COUNT(*) FROM {TABLE_NAME} WHERE submitted_at >= now() - INTERVAL 7 DAY'
-        )
-        logger.debug(f"Recent subscribers (7 days): {recent_subscribers}")
-
-        client.close()
-
-        return jsonify({
-            'total_subscribers': total_subscribers,
-            'recent_subscribers': recent_subscribers,
-            'source_breakdown': [{'source': row[0], 'count': row[1]} for row in source_stats]
-        })
-
-    except Exception as e:
-        logger.error(f"Error getting subscriber stats: {e}")
-        return jsonify({'error': 'Failed to retrieve statistics'}), 500
 
 @app.route('/break')
 def break_app():
@@ -229,11 +167,13 @@ def health_check():
     """Health check endpoint"""
     logger.debug("Health check requested")
     try:
-        client = get_clickhouse_client()
-        if client:
+        conn = get_psql_connection()
+        if conn:
             # Test database connection
-            client.command('SELECT 1')
-            client.close()
+            cursor = conn.cursor()
+            cursor.execute('SELECT 1;')
+            cursor.close()
+            conn.close()
             logger.info("Health check passed - database connected")
             return jsonify({
                 'status': 'healthy',
@@ -269,9 +209,5 @@ def serve_images(filename):
     return send_from_directory('static/images', filename)
 
 if __name__ == '__main__':
-    # Initialize database on startup
-    if init_database():
-        logger.info(f"Starting Flask application on {APP_HOST}:{APP_PORT}...")
-        app.run(host=APP_HOST, port=APP_PORT, debug=FLASK_DEBUG)
-    else:
-        logger.error("Failed to initialize database. Please check your ClickHouse connection.")
+    logger.info(f"Starting Flask application on {APP_HOST}:{APP_PORT}...")
+    app.run(host=APP_HOST, port=APP_PORT, debug=FLASK_DEBUG)
