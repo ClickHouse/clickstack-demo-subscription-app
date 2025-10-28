@@ -7,7 +7,7 @@ exporters:
   otlp/hdx:
     endpoint: 'clickstack:4317'
     headers:
-      authorization: your-api-key-here
+      authorization: ${HYPERDX_API_KEY}
     tls:
       insecure: true
   debug:

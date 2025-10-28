@@ -38,7 +38,7 @@ services:
       - POSTGRES_DATABASE=postgres
 
       # HyperDX Configuration (fallback values if Parameter Store is unavailable)
-      - HYPERDX_API_KEY=your-api-key-here
+      - HYPERDX_API_KEY=${HYPERDX_API_KEY}
       - OTEL_SERVICE_NAME=subscription-backend
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://clickstack:4318
       - HYPERDX_ENABLE_ADVANCED_NETWORK_CAPTURE=1
@@ -90,7 +90,7 @@ services:
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://clickstack:4318
       - OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf
       - OTEL_SERVICE_NAME=docs-loader
-      - OTEL_EXPORTER_OTLP_HEADERS=authorization=your-api-key-here
+      - OTEL_EXPORTER_OTLP_HEADERS=authorization=${HYPERDX_API_KEY}
     depends_on:
       clickstack:
         condition: service_started
