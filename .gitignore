@@ -2,3 +2,5 @@
 clickhouse/**
 clickstack/**
 postgresql-db/**
+!postgresql-db/init.sql
+subscription-app/logs/**

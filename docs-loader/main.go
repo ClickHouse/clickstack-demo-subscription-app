@@ -67,7 +67,7 @@ func main() {
   zap.ReplaceGlobals(logger)
 
   http.Handle("/", otelhttp.NewHandler(wrapHandler(logger, Status), "/"))
-  http.Handle("/break", otelhttp.NewHandler(wrapHandler(logger, Break), "/break"))
+  http.Handle("/load", otelhttp.NewHandler(wrapHandler(logger, Load), "/load"))
 
   port := os.Getenv("PORT")
   if port == "" {
@@ -95,7 +95,7 @@ func Status(w http.ResponseWriter, r *http.Request) {
   io.WriteString(w, `{"status":"ok"}`)
 }
 
-func Break(w http.ResponseWriter, r *http.Request) {
+func Load(w http.ResponseWriter, r *http.Request) {
   var data [][]byte
   chunkSize := 1024 * 1024 // 1 MB
 
@@ -111,5 +111,5 @@ func Break(w http.ResponseWriter, r *http.Request) {
   }
 
   w.Header().Add("Content-Type", "application/json")
-  io.WriteString(w, `{"status":"break"}`)
+  io.WriteString(w, `{"status":"ok"}`)
 }

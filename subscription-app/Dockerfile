@@ -30,9 +30,6 @@ RUN opentelemetry-bootstrap --action=install
 # Copy application code
 COPY flask_app.py .
 
-#Copy .env if exists
-COPY .env* .
-
 # Copy static files
 COPY static/ static/
 COPY templates/ templates/

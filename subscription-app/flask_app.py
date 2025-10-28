@@ -26,7 +26,7 @@ logger.setLevel(logging.DEBUG)
 # Load configuration
 config = load_config(logger = logger)
 
-# ClickHouse configuration
+# PostgreSQL configuration
 POSTGRES_HOST = config['POSTGRES_HOST']
 POSTGRES_PORT = int(config['POSTGRES_PORT'])
 POSTGRES_USERNAME = config['POSTGRES_USERNAME']
@@ -45,8 +45,8 @@ HYPERDX_ENDPOINT = config['HYPERDX_ENDPOINT']
 APP_HOST = os.getenv('FLASK_HOST', '0.0.0.0')
 APP_PORT = int(os.getenv('FLASK_PORT', '8000'))
 FLASK_DEBUG = os.getenv('FLASK_DEBUG', 'False').lower() in ('true', '1', 'yes', 'on')
-GOLANG_APP_HOST = os.getenv('GOLANG_APP_HOST', 'golang-app')
-GOLANG_APP_PORT = int(os.getenv('GOLANG_APP_PORT', '8001'))
+DOCS_LOADER_HOST = os.getenv('DOCS_LOADER_HOST', 'docs-loader')
+DOCS_LOADER_PORT = int(os.getenv('DOCS_LOADER_PORT', '8001'))
 
 # Initialize HyperDX
 setup_hyperdx(logger = logger)
@@ -150,13 +150,13 @@ def subscribe():
             'error': 'An error occurred while processing your subscription'
         }), 500
 
-@app.route('/break')
-def break_app():
-    """Break endpoint"""
-    golang_app_endpoint = f"http://{config['GOLANG_APP_HOST']}:{config['GOLANG_APP_PORT']}/break"
-    logger.debug("Simulate breaking the app")
+@app.route('/load-docs')
+def load_docs():
+    """Load docs endpoint"""
+    docs_loader_endpoint = f"http://{config['DOCS_LOADER_HOST']}:{config['DOCS_LOADER_PORT']}/load"
+    logger.debug("Simulate loading docs")
     try:
-        response = requests.get(golang_app_endpoint)
+        response = requests.get(docs_loader_endpoint)
         response.raise_for_status()
         return response.json()
     except requests.exceptions.RequestException as e:

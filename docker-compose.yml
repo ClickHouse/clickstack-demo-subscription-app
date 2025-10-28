@@ -15,21 +15,22 @@ services:
     image: postgres
     container_name: postgres-db
     volumes:
-      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./postgresql-db/init.sql:/docker-entrypoint-initdb.d/init.sql
       - ./postgresql-db:/var/lib/postgresql
     environment:
       POSTGRES_DB: postgres
       POSTGRES_PASSWORD: changeme
 
-  flask-app:
-    build: .
-    container_name: flask-subscription-app
+  subscription-app:
+    build: ./subscription-app
+    container_name: subscription-app
     ports:
       - 8000:8000 # Change if you want to change the FLASK_PORT below and/or also the external PORT
     environment:
       # Parameter Store Configuration
       - PARAMETER_STORE_PREFIX=/hyperdx-demo/frontend
 
+      # PostgreSQL Configuration
       - POSTGRES_HOST=postgres-db
       - POSTGRES_PORT=5432
       - POSTGRES_USERNAME=postgres
@@ -38,10 +39,10 @@ services:
 
       # HyperDX Configuration (fallback values if Parameter Store is unavailable)
       - HYPERDX_API_KEY=your-api-key-here
-      - OTEL_SERVICE_NAME=my-backend-app
+      - OTEL_SERVICE_NAME=subscription-backend
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://clickstack:4318
       - HYPERDX_ENABLE_ADVANCED_NETWORK_CAPTURE=1
-      - HYPERDX_SERVICE_NAME=my-frontend-app
+      - HYPERDX_SERVICE_NAME=subscription-frontend
       - HYPERDX_ENDPOINT=http://clickstack:4318
 
       # Flask Application Configuration
@@ -51,11 +52,10 @@ services:
 
       # Logging Configuration
       - LOG_LEVEL=INFO
-
     volumes:
       # Mount AWS credentials if not using IAM roles
       # - ~/.aws/credentials:/home/appuser/.aws/credentials:ro
-      - ./logs:/app/logs
+      - ./subscription-app/logs:/app/logs
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/health')"]
@@ -73,12 +73,12 @@ services:
         condition: service_started
       postgres-db:
         condition: service_started
-      golang-app:
+      docs-loader:
         condition: service_started
 
-  golang-app:
-    build: ./broken
-    container_name: golang-app
+  docs-loader:
+    build: ./docs-loader
+    container_name: docs-loader
     restart: unless-stopped
     deploy:
       resources:
@@ -89,7 +89,7 @@ services:
     environment:
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://clickstack:4318
       - OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf
-      - OTEL_SERVICE_NAME=my-app
+      - OTEL_SERVICE_NAME=docs-loader
       - OTEL_EXPORTER_OTLP_HEADERS=authorization=your-api-key-here
     depends_on:
       clickstack:
@@ -102,12 +102,12 @@ services:
     environment:
       - LOCUST_WEB_PORT=8081
       - LOCUST_USERS=5
-      - LOCUST_HOST=http://flask-app:8000
+      - LOCUST_HOST=http://subscription-app:8000
       - LOCUST_HEADLESS=true
       - LOCUST_AUTOSTART=true
       - LOCUST_WEB_HOST=0.0.0.0
     depends_on:
-      flask-app:
+      subscription-app:
         condition: service_started
 
   socat:

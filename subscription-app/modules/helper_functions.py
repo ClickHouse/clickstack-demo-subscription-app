@@ -5,7 +5,6 @@ from botocore.exceptions import ClientError
 from dotenv import load_dotenv
 from hyperdx.opentelemetry import configure_opentelemetry
 
-
 def get_parameter_store_value(parameter_name, logger, region = None, default_value=None):
     """Get parameter value from AWS Parameter Store"""
     try:
@@ -48,15 +47,15 @@ def load_config(logger, region = None):
 
         # HyperDX configuration
         '/hyperdx/api_key': ('HYPERDX_API_KEY', ''),
-        '/hyperdx/otel_service_name': ('OTEL_SERVICE_NAME', 'my-backend-app'),
+        '/hyperdx/otel_service_name': ('OTEL_SERVICE_NAME', 'subscription-backend'),
         '/hyperdx/otel_endpoint': ('OTEL_EXPORTER_OTLP_ENDPOINT', 'https://in-otel.hyperdx.io'),
         '/hyperdx/adv_net_cap': ('HYPERDX_ENABLE_ADVANCED_NETWORK_CAPTURE', 1),
-        '/hyperdx/service_name': ('HYPERDX_SERVICE_NAME', 'flask-subscription-app'),
+        '/hyperdx/service_name': ('HYPERDX_SERVICE_NAME', 'subscription-frontend'),
         '/hyperdx/endpoint': ('HYPERDX_ENDPOINT', 'https://in-otel.hyperdx.io'),
 
         # Golang app configuration
-        '/golangapp/host': ('GOLANG_APP_HOST', 'golang-app'),
-        '/golangapp/port': ('GOLANG_APP_PORT', '8001')
+        '/docs-loader/host': ('DOCS_LOADER_HOST', 'docs-loader'),
+        '/docs-loader/port': ('DOCS_LOADER_PORT', '8001')
     }
 
     for param_suffix, (env_key, default_value) in parameters.items():
@@ -79,15 +78,15 @@ def setup_hyperdx(logger):
     try:
         # Set environment variables for OpenTelemetry
         os.environ['HYPERDX_API_KEY'] = config['HYPERDX_API_KEY']
-        os.environ['OTEL_SERVICE_NAME'] = 'my-backend-app'
+        os.environ['OTEL_SERVICE_NAME'] = 'subscription-backend'
         os.environ['OTEL_EXPORTER_OTLP_ENDPOINT'] = config['HYPERDX_ENDPOINT']
-        
+
         # Enable advanced network capture if desired
-        os.environ['HYPERDX_ENABLE_ADVANCED_NETWORK_CAPTURE'] = '1'        
-        
+        os.environ['HYPERDX_ENABLE_ADVANCED_NETWORK_CAPTURE'] = '1'
+
         # Configure HyperDX OpenTelemetry
         configure_opentelemetry()
-        
+
         logger.info("HyperDX OpenTelemetry configured successfully")
         return True
     except Exception as e:
