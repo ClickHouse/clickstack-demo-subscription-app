@@ -1,5 +1,5 @@
 .env
-.DS_Store
+**/.DS_Store
 clickhouse/**
 clickstack/**
 postgresql-db/**
