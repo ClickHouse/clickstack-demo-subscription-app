@@ -4,9 +4,8 @@ A Flask-based web application that showcases ClickHouse features while collectin
 
 ## Overview
 
-This project demonstrates:
-- **ClickHouse Integration**: Stores subscription data in a ClickHouse database
-- **HyperDX Observability**: Full OpenTelemetry instrumentation for monitoring and debugging, both in front-end (browser) and back-end (Python)
+This project demonstrates ClickStack Observability through full OpenTelemetry instrumentation for monitoring and debugging, both in front-end (browser) and back-end (Python and Go).
+After the data is sent from the OpenTelemetry collector to ClickHouse, it is possible to use HyperDX to visualize data and get insights.
 
 ## Architecture
 ![Architecture](img/architecture.png "Architecture")
@@ -27,11 +26,9 @@ This project demonstrates:
 3. **Access ClickStack**
    - http://localhost:8080
 
-4. **Setup HyperDX by creating username and password that meet the requirements**
-   ![Setup HyperDX](img/setup_hyperdx.png "Setup HyperDX")
+4. **Set up HyperDX by creating username and password that meet the requirements**
 
 5. **Click Add Data**
-   ![Add Data](img/add_data.png "Add Data")
 
 6. **Copy your ingestion API Key**
 
