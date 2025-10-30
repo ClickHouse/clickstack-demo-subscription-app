@@ -10,6 +10,12 @@ services:
       - ./clickstack/db:/data/db
       - ./clickstack/ch_data:/var/lib/clickhouse
       - ./clickstack/ch_logs:/var/log/clickhouse-server
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8123/ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
   postgres-db:
     image: postgres
@@ -20,6 +26,12 @@ services:
     environment:
       POSTGRES_DB: postgres
       POSTGRES_PASSWORD: changeme
+    healthcheck:
+      test: ["CMD", "pg_isready"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
   subscription-app:
     build: ./subscription-app
@@ -66,11 +78,11 @@ services:
         max-file: "3"
     depends_on:
       clickstack:
-        condition: service_started
+        condition: service_healthy
       postgres-db:
-        condition: service_started
+        condition: service_healthy
       docs-loader:
-        condition: service_started
+        condition: service_healthy
 
   docs-loader:
     build: ./docs-loader
@@ -87,9 +99,15 @@ services:
       - OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf
       - OTEL_SERVICE_NAME=docs-loader
       - OTEL_EXPORTER_OTLP_HEADERS=authorization=${HYPERDX_API_KEY}
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8001"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
     depends_on:
       clickstack:
-        condition: service_started
+        condition: service_healthy
 
   load-generator:
     build: ./load-generator
@@ -104,7 +122,7 @@ services:
       - LOCUST_WEB_HOST=0.0.0.0
     depends_on:
       subscription-app:
-        condition: service_started
+        condition: service_healthy
 
   socat:
     image: alpine/socat
@@ -115,18 +133,30 @@ services:
       - type: bind
         source: /var/run/docker.sock
         target: /var/run/docker.sock
+    healthcheck:
+      test: ["CMD", "socat", "/dev/null", "tcp:localhost:2375"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
   otel-collector:
-    image: otel/opentelemetry-collector-contrib
+    build: ./otel-collector
     container_name: otel-collector
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - ./config/otel-collector/otel-collector-config.yaml:/etc/otelcol-contrib/config.yaml
+      - ./otel-collector/otel-collector-config.yaml:/etc/otelcol-contrib/config.yaml
+    healthcheck:
+      test: ["CMD", "./healthcheck"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
     depends_on:
       socat:
-        condition: service_started
+        condition: service_healthy
       clickstack:
-        condition: service_started
+        condition: service_healthy
 
 networks:
   default:

@@ -1,3 +1,7 @@
+extensions:
+  health_check:
+    endpoint: 0.0.0.0:13133
+
 receivers:
   docker_stats:
     endpoint: tcp://socat:2375
@@ -17,6 +21,7 @@ processors:
   batch:
 
 service:
+  extensions: [health_check]
   pipelines:
     metrics:
       receivers: [docker_stats]
