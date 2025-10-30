@@ -8,7 +8,7 @@ This project demonstrates ClickStack Observability through full OpenTelemetry in
 After the data is sent from the OpenTelemetry collector to ClickHouse, it is possible to use HyperDX to visualize data and get insights.
 
 ## Architecture
-![Architecture](img/architecture.png "Architecture")
+![Architecture](architecture.png "Architecture")
 
 ## Quick Start
 
