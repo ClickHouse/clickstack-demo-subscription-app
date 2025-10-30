@@ -39,9 +39,6 @@ services:
     ports:
       - 8000:8000 # Change if you want to change the FLASK_PORT below and/or also the external PORT
     environment:
-      # Parameter Store Configuration
-      - PARAMETER_STORE_PREFIX=/hyperdx-demo/frontend
-
       # PostgreSQL Configuration
       - POSTGRES_HOST=postgres-db
       - POSTGRES_PORT=5432
@@ -56,6 +53,10 @@ services:
       - HYPERDX_ENABLE_ADVANCED_NETWORK_CAPTURE=1
       - HYPERDX_SERVICE_NAME=subscription-frontend
       - HYPERDX_ENDPOINT=http://clickstack:4318
+
+      # Docs loader
+      - DOCS_LOADER_HOST=docs-loader
+      - DOCS_LOADER_PORT=8001
 
       # Flask Application Configuration
       - FLASK_HOST=0.0.0.0

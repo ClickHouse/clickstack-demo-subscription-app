@@ -144,7 +144,7 @@ def subscribe():
 @app.route('/load-docs')
 def load_docs():
     """Load docs endpoint"""
-    docs_loader_endpoint = f"http://{config['DOCS_LOADER_HOST']}:{config['DOCS_LOADER_PORT']}/load"
+    docs_loader_endpoint = f"http://{DOCS_LOADER_HOST}:{DOCS_LOADER_PORT}/load"
     logger.debug("Simulate loading docs")
     try:
         response = requests.get(docs_loader_endpoint)
