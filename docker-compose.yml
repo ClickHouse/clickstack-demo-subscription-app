@@ -52,10 +52,6 @@ services:
 
       # Logging Configuration
       - LOG_LEVEL=INFO
-    volumes:
-      # Mount AWS credentials if not using IAM roles
-      # - ~/.aws/credentials:/home/appuser/.aws/credentials:ro
-      - ./subscription-app/logs:/app/logs
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/health')"]

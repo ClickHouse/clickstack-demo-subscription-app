@@ -3,15 +3,8 @@ import psycopg2
 import logging
 from datetime import datetime
 import os
-import boto3
-from botocore.exceptions import ClientError
-from dotenv import load_dotenv
 from hyperdx.opentelemetry import configure_opentelemetry
-from modules.helper_functions import get_parameter_store_value, load_config, setup_hyperdx
 import requests
-
-# Load environment variables from .env file
-load_dotenv(override=True)
 
 app = Flask(__name__, template_folder='templates', static_folder='static')
 
@@ -23,33 +16,31 @@ logger = logging.getLogger(__name__)
 # Set logger level to ensure HyperDX captures logs properly
 logger.setLevel(logging.DEBUG)
 
-# Load configuration
-config = load_config(logger = logger)
+logger.info("Loading configuration variables")
+try:
+    # PostgreSQL configuration
+    POSTGRES_HOST = os.getenv('POSTGRES_HOST', 'localhost')
+    POSTGRES_PORT = int(os.getenv('POSTGRES_PORT', '5432'))
+    POSTGRES_USERNAME = os.getenv('POSTGRES_USERNAME', 'postgres')
+    POSTGRES_PASSWORD = os.getenv('POSTGRES_PASSWORD', '')
+    POSTGRES_DATABASE = os.getenv('POSTGRES_DATABASE', 'postgres')
 
-# PostgreSQL configuration
-POSTGRES_HOST = config['POSTGRES_HOST']
-POSTGRES_PORT = int(config['POSTGRES_PORT'])
-POSTGRES_USERNAME = config['POSTGRES_USERNAME']
-POSTGRES_PASSWORD = config['POSTGRES_PASSWORD']
-POSTGRES_DATABASE = config['POSTGRES_DATABASE']
+    # HyperDX configuration
+    HYPERDX_API_KEY = os.getenv('HYPERDX_API_KEY', '')
+    OTEL_SERVICE_NAME = os.getenv('OTEL_SERVICE_NAME', 'subscription-backend')
+    OTEL_EXPORTER_OTLP_ENDPOINT = os.getenv('OTEL_EXPORTER_OTLP_ENDPOINT', 'http://localhost:4318')
+    HYPERDX_ENABLE_ADVANCED_NETWORK_CAPTURE = int(os.getenv('HYPERDX_ENABLE_ADVANCED_NETWORK_CAPTURE', '1'))
+    HYPERDX_SERVICE_NAME = os.getenv('HYPERDX_SERVICE_NAME', 'subscription-frontend')
+    HYPERDX_ENDPOINT = os.getenv('HYPERDX_ENDPOINT', 'http://localhost:4318')
 
-# HyperDX configuration
-HYPERDX_API_KEY = config['HYPERDX_API_KEY']
-OTEL_SERVICE_NAME = config['OTEL_SERVICE_NAME']
-OTEL_EXPORTER_OTLP_ENDPOINT = config['OTEL_EXPORTER_OTLP_ENDPOINT']
-HYPERDX_ENABLE_ADVANCED_NETWORK_CAPTURE = config['HYPERDX_ENABLE_ADVANCED_NETWORK_CAPTURE']
-HYPERDX_SERVICE_NAME = config['HYPERDX_SERVICE_NAME']
-HYPERDX_ENDPOINT = config['HYPERDX_ENDPOINT']
-
-# Other configurable values
-APP_HOST = os.getenv('FLASK_HOST', '0.0.0.0')
-APP_PORT = int(os.getenv('FLASK_PORT', '8000'))
-FLASK_DEBUG = os.getenv('FLASK_DEBUG', 'False').lower() in ('true', '1', 'yes', 'on')
-DOCS_LOADER_HOST = os.getenv('DOCS_LOADER_HOST', 'docs-loader')
-DOCS_LOADER_PORT = int(os.getenv('DOCS_LOADER_PORT', '8001'))
-
-# Initialize HyperDX
-setup_hyperdx(logger = logger)
+    # Other configurable values
+    APP_HOST = os.getenv('FLASK_HOST', '0.0.0.0')
+    APP_PORT = int(os.getenv('FLASK_PORT', '8000'))
+    FLASK_DEBUG = os.getenv('FLASK_DEBUG', 'False').lower() in ('true', '1', 'yes', 'on')
+    DOCS_LOADER_HOST = os.getenv('DOCS_LOADER_HOST', 'localhost')
+    DOCS_LOADER_PORT = int(os.getenv('DOCS_LOADER_PORT', '8001'))
+except Exception as e:
+    logger.error(f"Failed to load configuration variables: {e}")
 
 def get_psql_connection():
     """Get PostgreSQL client connection"""

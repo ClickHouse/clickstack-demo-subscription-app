@@ -33,16 +33,11 @@ COPY flask_app.py .
 # Copy static files
 COPY static/ static/
 COPY templates/ templates/
-COPY modules/ modules/
 
 # Create non-root user for security
 RUN adduser --disabled-password --gecos '' appuser \
     && chown -R appuser:appuser /app
 USER appuser
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
-    CMD python -c "import requests; requests.get('http://localhost:8000/health')" || exit 1
 
 # Run the application
 CMD ["opentelemetry-instrument", "python", "flask_app.py"]
