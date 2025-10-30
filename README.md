@@ -9,6 +9,7 @@ After the data is sent from the OpenTelemetry collector to ClickHouse, it is pos
 
 ## Architecture
 ![Architecture](architecture.png "Architecture")
+=======
 
 ## Quick Start
 
