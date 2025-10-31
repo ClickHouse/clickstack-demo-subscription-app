@@ -9,14 +9,14 @@ import requests
 app = Flask(__name__, template_folder='templates', static_folder='static')
 
 # Configure logging
-log_level = os.getenv('LOG_LEVEL', 'INFO').upper()
-logging.basicConfig(level=getattr(logging, log_level))
+logging.getLogger('werkzeug').disabled = True
+log_level = os.getenv('LOG_LEVEL', 'INFO').upper()      # get log_level as string
+log_level = getattr(logging, log_level, 'INFO')         # convert log_level to numeric
 logger = logging.getLogger(__name__)
-
 # Set logger level to ensure HyperDX captures logs properly
-logger.setLevel(logging.DEBUG)
+logger.setLevel(log_level)
 
-logger.info("Loading configuration variables")
+logger.debug("Loading configuration variables")
 try:
     # PostgreSQL configuration
     POSTGRES_HOST = os.getenv('POSTGRES_HOST', 'localhost')
@@ -44,6 +44,7 @@ except Exception as e:
 
 def get_psql_connection():
     """Get PostgreSQL client connection"""
+    logger.debug("Connecting to PostgreSQL")
     try:
         conn = psycopg2.connect(
             database=POSTGRES_DATABASE,
@@ -52,16 +53,27 @@ def get_psql_connection():
             host=POSTGRES_HOST,
             port=POSTGRES_PORT
         )
-        logger.info("Successfully connected to PostgreSQL")
+        logger.debug("Successfully connected to PostgreSQL")
         return conn
     except Exception as e:
         logger.error(f"Failed to connect to PostgreSQL: {e}")
         return None
 
+def log_request():
+    """Log request using standard format"""
+    timestamp = datetime.now()
+    client_ip = request.environ.get('HTTP_X_FORWARDED_FOR', request.remote_addr)
+    user_agent = request.headers.get('User-Agent')
+    method = request.method
+    path = request.path
+    http_version = request.environ.get('SERVER_PROTOCOL')
+    logger.info(f'{client_ip} [{timestamp}] "{method} {path} {http_version}" "{user_agent}"')
+
 @app.route('/')
 def index():
     """Serve the main HTML page with injected config"""
-    logger.info("Serving main page")
+    logger.debug("Serving main page")
+    log_request()
     hyperdx_config = {
         'api_key': HYPERDX_API_KEY,
         'service_name': HYPERDX_SERVICE_NAME,
@@ -72,7 +84,8 @@ def index():
 @app.route('/api/subscribe', methods=['POST'])
 def subscribe():
     """Handle form submissions and store in Postgres"""
-    logger.info("Processing subscription request")
+    logger.debug("Processing subscription request")
+    log_request()
     try:
         # Get JSON data from request
         data = request.get_json()
@@ -89,10 +102,7 @@ def subscribe():
                     'error': f'Missing required field: {field}'
                 }), 400
 
-        # Get client IP address
-        client_ip = request.environ.get('HTTP_X_FORWARDED_FOR', request.remote_addr)
-        logger.debug(f"Client IP: {client_ip}")
-
+        logger.debug("Connecting to PostgreSQL")
         conn = get_psql_connection()
         if not conn:
             logger.error("Database connection failed during subscription")
@@ -121,13 +131,14 @@ def subscribe():
                 submitted_at = EXCLUDED.submitted_at;
         """
 
+        logger.debug("Inserting data")
         cursor.execute(insert_query, insert_data)
 
         conn.commit()
         cursor.close()
         conn.close()
 
-        logger.info(f"New subscription from ******** via {insert_data[0][3]}")
+        logger.debug(f"New subscription from ******** via {insert_data[0][3]}")
 
         return jsonify({
             'success': True,
@@ -146,6 +157,7 @@ def load_docs():
     """Load docs endpoint"""
     docs_loader_endpoint = f"http://{DOCS_LOADER_HOST}:{DOCS_LOADER_PORT}/load"
     logger.debug("Simulate loading docs")
+    log_request()
     try:
         response = requests.get(docs_loader_endpoint)
         response.raise_for_status()
@@ -157,6 +169,7 @@ def load_docs():
 def health_check():
     """Health check endpoint"""
     logger.debug("Health check requested")
+    log_request()
     try:
         conn = get_psql_connection()
         if conn:
@@ -189,14 +202,17 @@ def health_check():
 # Serve static files (CSS, JS, images)
 @app.route('/css/<path:filename>')
 def serve_css(filename):
+    log_request()
     return send_from_directory('static/css', filename)
 
 @app.route('/js/<path:filename>')
 def serve_js(filename):
+    log_request()
     return send_from_directory('static/js', filename)
 
 @app.route('/images/<path:filename>')
 def serve_images(filename):
+    log_request()
     return send_from_directory('static/images', filename)
 
 if __name__ == '__main__':

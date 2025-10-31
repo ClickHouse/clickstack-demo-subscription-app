@@ -7,4 +7,6 @@ hyperdx-opentelemetry
 # Additional OpenTelemetry packages for comprehensive instrumentation
 opentelemetry-instrumentation[otlp]
 opentelemetry-instrumentation-flask
+opentelemetry-instrumentation-logging
+opentelemetry-instrumentation-psycopg2
 opentelemetry-instrumentation-requests
