@@ -84,9 +84,9 @@ func main() {
 func wrapHandler(logger *zap.Logger, handler http.HandlerFunc) http.HandlerFunc {
   return func(w http.ResponseWriter, r *http.Request) {
     logger := WithTraceMetadata(r.Context(), logger)
-    logger.Info("request received", zap.String("url", r.URL.Path), zap.String("method", r.Method))
+    logger.Info("request received: " + r.Method + " " + r.URL.Path, zap.String("url", r.URL.Path), zap.String("method", r.Method))
     handler(w, r)
-    logger.Info("request completed", zap.String("path", r.URL.Path), zap.String("method", r.Method))
+    logger.Info("request completed: " + r.Method + " " + r.URL.Path, zap.String("path", r.URL.Path), zap.String("method", r.Method))
   }
 }
 

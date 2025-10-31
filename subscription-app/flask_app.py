@@ -178,7 +178,7 @@ def health_check():
             cursor.execute('SELECT 1;')
             cursor.close()
             conn.close()
-            logger.info("Health check passed - database connected")
+            logger.debug("Health check passed - database connected")
             return jsonify({
                 'status': 'healthy',
                 'database': 'connected',
