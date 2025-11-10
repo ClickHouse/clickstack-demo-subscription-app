@@ -3,7 +3,6 @@ import psycopg2
 import logging
 from datetime import datetime
 import os
-from hyperdx.opentelemetry import configure_opentelemetry
 import requests
 
 app = Flask(__name__, template_folder='templates', static_folder='static')
