@@ -21,7 +21,7 @@ sources = [
 
 def get_random_public_ip():
     ip = "127.0.0.1"
-    while not ipaddress.IPv4Address(ip).is_global:
+    while not ipaddress.IPv4Address(ip).is_global or ipaddress.IPv4Address(ip).is_multicast:
         ip = f"{random.randint(0, 255)}.{random.randint(0, 255)}.{random.randint(0, 255)}.{random.randint(0, 255)}"
     return ip
 
