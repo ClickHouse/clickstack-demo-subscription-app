@@ -1,6 +1,6 @@
 services:
   clickstack:
-    image: docker.hyperdx.io/hyperdx/hyperdx-all-in-one
+    image: clickhouse/clickstack-all-in-one:latest
     container_name: clickstack
     ports:
       - 8080:8080
