@@ -368,3 +368,27 @@ nav {
         grid-template-columns: 1fr;
     }
 }
+
+/* creating css loader */
+
+#loading {
+    width: 1.75rem;
+    height: 1.75rem;
+    border: 5px solid #f3f3f3;
+    border-top: 6px solid #ffff00;
+    border-radius: 100%;
+    margin: auto;
+    visibility: hidden;
+    animation: spin 1s infinite linear;
+}
+#loading.display {
+    visibility: visible;
+}
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}

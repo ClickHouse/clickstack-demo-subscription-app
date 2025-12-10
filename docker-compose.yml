@@ -1,51 +1,75 @@
 services:
-  flask-app:
-    build: .
-    container_name: flask-subscription-app
+  clickstack:
+    image: clickhouse/clickstack-all-in-one:latest
+    container_name: clickstack
     ports:
-      - "8000:8000" # Change if you want to change the FLASK_PORT below and/or also the external PORT
+      - 8080:8080
+      - 4317:4317
+      - 4318:4318
+    volumes:
+      - ./clickstack/db:/data/db
+      - ./clickstack/ch_data:/var/lib/clickhouse
+      - ./clickstack/ch_logs:/var/log/clickhouse-server
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8123/ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  postgres-db:
+    image: postgres
+    container_name: postgres-db
+    volumes:
+      - ./postgresql-db/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./postgresql-db:/var/lib/postgresql
     environment:
-      # AWS Configuration
-      - AWS_DEFAULT_REGION=us-west-2  # Change to your AWS region
-      
-      # Parameter Store Configuration
-      - PARAMETER_STORE_PREFIX=/caio-hyperdx-demo/frontend
-      
-      # ClickHouse Configuration (fallback values if Parameter Store is unavailable)
-      - CLICKHOUSE_HOST=localhost
-      - CLICKHOUSE_PORT=8123
-      - CLICKHOUSE_USERNAME=default
-      - CLICKHOUSE_PASSWORD=
-      - CLICKHOUSE_DATABASE=default
+      POSTGRES_DB: postgres
+      POSTGRES_PASSWORD: changeme
+    healthcheck:
+      test: ["CMD", "pg_isready"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  subscription-app:
+    build: ./subscription-app
+    container_name: subscription-app
+    ports:
+      - 8000:8000 # Change if you want to change the FLASK_PORT below and/or also the external PORT
+    environment:
+      # PostgreSQL Configuration
+      - POSTGRES_HOST=postgres-db
+      - POSTGRES_PORT=5432
+      - POSTGRES_USERNAME=postgres
+      - POSTGRES_PASSWORD=changeme
+      - POSTGRES_DATABASE=postgres
 
       # HyperDX Configuration (fallback values if Parameter Store is unavailable)
-      - HYPERDX_API_KEY=your-api-key-here
-      - HYPERDX_SERVICE_NAME=my-frontend-app
-      - HYPERDX_ENDPOINT=https://in-otel.hyperdx.io
+      - HYPERDX_API_KEY=${HYPERDX_API_KEY}
+      - OTEL_SERVICE_NAME=subscription-backend
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://clickstack:4318
+      - HYPERDX_ENABLE_ADVANCED_NETWORK_CAPTURE=1
+      - HYPERDX_SERVICE_NAME=subscription-frontend
+      - HYPERDX_ENDPOINT=http://clickstack:4318
 
-      #Clickhouse table name where subscriptions sent by form will be stored, in case you want to customize it
-      - CLICKHOUSE_TABLE_NAME=subscriptions
-      
+      # Docs loader
+      - DOCS_LOADER_HOST=docs-loader
+      - DOCS_LOADER_PORT=8001
+
       # Flask Application Configuration
       - FLASK_HOST=0.0.0.0
       - FLASK_PORT=8000
       - FLASK_DEBUG=false
-      
+
       # Logging Configuration
       - LOG_LEVEL=INFO
-
-      # Enable Docker instrumentation (can be true, yes, ok, 1, false, no, 0)
-      - ENABLE_DOCKER_INSTRUMENTATION=true
-      
-    volumes:
-      # Mount AWS credentials if not using IAM roles
-      # - ~/.aws/credentials:/home/appuser/.aws/credentials:ro
-      - ./logs:/app/logs
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/health')"]
-      interval: 30s
-      timeout: 10s
+      interval: 1s
+      timeout: 1s
       retries: 3
       start_period: 40s
     logging:
@@ -53,3 +77,91 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+    depends_on:
+      clickstack:
+        condition: service_healthy
+      postgres-db:
+        condition: service_healthy
+      docs-loader:
+        condition: service_healthy
+
+  docs-loader:
+    build: ./docs-loader
+    container_name: docs-loader
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 10M
+    ports:
+      - 8001:8001
+    environment:
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://clickstack:4318
+      - OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf
+      - OTEL_SERVICE_NAME=docs-loader
+      - OTEL_EXPORTER_OTLP_HEADERS=authorization=${HYPERDX_API_KEY}
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8001"]
+      interval: 1s
+      timeout: 1s
+      retries: 3
+      start_period: 40s
+    depends_on:
+      clickstack:
+        condition: service_healthy
+
+  load-generator:
+    build: ./load-generator
+    container_name: load-generator
+    restart: unless-stopped
+    environment:
+      - LOCUST_WEB_PORT=8081
+      - LOCUST_USERS=5
+      - LOCUST_HOST=http://subscription-app:8000
+      - LOCUST_HEADLESS=true
+      - LOCUST_AUTOSTART=true
+      - LOCUST_WEB_HOST=0.0.0.0
+    depends_on:
+      subscription-app:
+        condition: service_healthy
+
+  socat:
+    image: alpine/socat
+    container_name: socat
+    command: tcp-listen:2375,fork,reuseaddr unix-connect:/var/run/docker.sock
+    user: root
+    volumes:
+      - type: bind
+        source: /var/run/docker.sock
+        target: /var/run/docker.sock
+    healthcheck:
+      test: ["CMD", "socat", "/dev/null", "tcp:localhost:2375"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  otel-collector:
+    build: ./otel-collector
+    container_name: otel-collector
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./otel-collector/otel-collector-config.yaml:/etc/otelcol-contrib/config.yaml
+    environment:
+      - HYPERDX_API_KEY=${HYPERDX_API_KEY}
+    healthcheck:
+      test: ["CMD", "./healthcheck"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    depends_on:
+      socat:
+        condition: service_healthy
+      clickstack:
+        condition: service_healthy
+
+networks:
+  default:
+    name: hyperdx-demo
+    driver: bridge
