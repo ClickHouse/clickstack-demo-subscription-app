@@ -1,4 +1,4 @@
-# ClickHouse Subscription App
+# ClickHouse Subscription Demo App
 
 A Flask-based web application that showcases ClickHouse features while collecting user subscriptions. The app is fully instrumented with HyperDX OpenTelemetry for observability and monitoring.
 
@@ -15,8 +15,8 @@ After the data is sent from the OpenTelemetry collector to ClickHouse, it is pos
 
 1. **Clone the repo**
    ```bash
-   git clone https://github.com/ClickHouse/hyperdx_demo
-   cd hyperdx_demo
+   git clone https://github.com/ClickHouse/clickstack-demo-subscription-app
+   cd clickstack-demo-subscription-app
    ```
 
 2. **Start ClickStack**
@@ -62,5 +62,4 @@ After the data is sent from the OpenTelemetry collector to ClickHouse, it is pos
 ## Support
 
 - **ClickHouse Documentation**: https://clickhouse.com/docs
-- **HyperDX Documentation**: https://docs.hyperdx.io
-- **Flask Documentation**: https://flask.palletsprojects.com
+- **ClickStack Documentation**: https://clickhouse.com/docs/use-cases/observability/clickstack
