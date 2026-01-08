@@ -1,6 +1,6 @@
 services:
   clickstack:
-    image: clickhouse/clickstack-all-in-one:2.9.0
+    image: clickhouse/clickstack-all-in-one:2.11.0
     container_name: clickstack
     ports:
       - 8080:8080
@@ -145,7 +145,7 @@ services:
       start_period: 40s
 
   otel-collector:
-    image: ghcr.io/clickhouse/clickstack-demo-subscription-app:25.12.0-otel-collector
+    image: ghcr.io/clickhouse/clickstack-demo-subscription-app:26.1.0-otel-collector
     build: ./otel-collector
     container_name: otel-collector
     volumes:

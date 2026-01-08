@@ -4,7 +4,6 @@ extensions:
 
 receivers:
   docker_stats:
-    #api_version: "1.44" #https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/44279
     endpoint: tcp://socat:2375
     collection_interval: 15s
 
