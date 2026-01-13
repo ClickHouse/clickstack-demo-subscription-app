@@ -24,7 +24,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir -r requirements.txt
 
-# Install opentelemtery-boothstrap for instrumentation
+# Install opentelemtery-bootstrap for auto-instrumentation
 RUN opentelemetry-bootstrap --action=install
 
 # Copy application code

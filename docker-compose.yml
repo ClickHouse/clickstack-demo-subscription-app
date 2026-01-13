@@ -149,7 +149,6 @@ services:
     build: ./otel-collector
     container_name: otel-collector
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
       - ./otel-collector/otel-collector-config.yaml:/etc/otelcol-contrib/config.yaml
     environment:
       - HYPERDX_API_KEY=${HYPERDX_API_KEY}
