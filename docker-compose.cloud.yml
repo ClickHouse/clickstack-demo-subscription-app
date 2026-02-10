@@ -1,0 +1,170 @@
+services:
+  clickstack:
+    image: clickhouse/clickstack-otel-collector:2.15.1
+    container_name: clickstack
+    ports:
+      - 4317:4317
+      - 4318:4318
+    environment:
+      - OTLP_AUTH_TOKEN=${HYPERDX_API_KEY}
+      - CLICKHOUSE_ENDPOINT=${CLICKHOUSE_ENDPOINT}
+      - CLICKHOUSE_USER=${CLICKHOUSE_USER}
+      - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD}
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "13133"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  postgres-db:
+    image: postgres:18.1
+    container_name: postgres-db
+    volumes:
+      - ./postgresql-db/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./postgresql-db:/var/lib/postgresql
+    environment:
+      POSTGRES_DB: postgres
+      POSTGRES_PASSWORD: changeme
+    healthcheck:
+      test: ["CMD", "pg_isready"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  subscription-app:
+    image: ghcr.io/clickhouse/clickstack-demo-subscription-app:25.12.0-subscription-app
+    build: ./subscription-app
+    container_name: subscription-app
+    ports:
+      - 8000:8000 # Change if you want to change the FLASK_PORT below and/or also the external PORT
+    environment:
+      # PostgreSQL Configuration
+      - POSTGRES_HOST=postgres-db
+      - POSTGRES_PORT=5432
+      - POSTGRES_USERNAME=postgres
+      - POSTGRES_PASSWORD=changeme
+      - POSTGRES_DATABASE=postgres
+
+      # HyperDX Configuration (fallback values if Parameter Store is unavailable)
+      - HYPERDX_API_KEY=${HYPERDX_API_KEY}
+      - OTEL_SERVICE_NAME=subscription-backend
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://clickstack:4318
+      - HYPERDX_ENABLE_ADVANCED_NETWORK_CAPTURE=1
+      - HYPERDX_SERVICE_NAME=subscription-frontend
+      - HYPERDX_ENDPOINT=http://clickstack:4318
+
+      # Docs loader
+      - DOCS_LOADER_HOST=docs-loader
+      - DOCS_LOADER_PORT=8001
+
+      # Flask Application Configuration
+      - FLASK_HOST=0.0.0.0
+      - FLASK_PORT=8000
+      - FLASK_DEBUG=false
+
+      # Logging Configuration
+      - LOG_LEVEL=INFO
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/health')"]
+      interval: 1s
+      timeout: 1s
+      retries: 3
+      start_period: 40s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    depends_on:
+      clickstack:
+        condition: service_healthy
+      postgres-db:
+        condition: service_healthy
+      docs-loader:
+        condition: service_healthy
+
+  docs-loader:
+    image: ghcr.io/clickhouse/clickstack-demo-subscription-app:25.12.0-docs-loader
+    build: ./docs-loader
+    container_name: docs-loader
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 10M
+    ports:
+      - 8001:8001
+    environment:
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://clickstack:4318
+      - OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf
+      - OTEL_SERVICE_NAME=docs-loader
+      - OTEL_EXPORTER_OTLP_HEADERS=authorization=${HYPERDX_API_KEY}
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8001"]
+      interval: 1s
+      timeout: 1s
+      retries: 3
+      start_period: 40s
+    depends_on:
+      clickstack:
+        condition: service_healthy
+
+  load-generator:
+    image: ghcr.io/clickhouse/clickstack-demo-subscription-app:25.12.0-load-generator
+    build: ./load-generator
+    container_name: load-generator
+    restart: unless-stopped
+    environment:
+      - LOCUST_WEB_PORT=8081
+      - LOCUST_USERS=5
+      - LOCUST_HOST=http://subscription-app:8000
+      - LOCUST_HEADLESS=true
+      - LOCUST_AUTOSTART=true
+      - LOCUST_WEB_HOST=0.0.0.0
+    depends_on:
+      subscription-app:
+        condition: service_healthy
+
+  socat:
+    image: alpine/socat:1.8.0.3
+    container_name: socat
+    command: tcp-listen:2375,fork,reuseaddr unix-connect:/var/run/docker.sock
+    user: root
+    volumes:
+      - type: bind
+        source: /var/run/docker.sock
+        target: /var/run/docker.sock
+    healthcheck:
+      test: ["CMD", "socat", "/dev/null", "tcp:localhost:2375"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  otel-collector:
+    image: ghcr.io/clickhouse/clickstack-demo-subscription-app:26.1.0-otel-collector
+    build: ./otel-collector
+    container_name: otel-collector
+    volumes:
+      - ./otel-collector/otel-collector-config.yaml:/etc/otelcol-contrib/config.yaml
+    environment:
+      - HYPERDX_API_KEY=${HYPERDX_API_KEY}
+    healthcheck:
+      test: ["CMD", "./healthcheck"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    depends_on:
+      socat:
+        condition: service_healthy
+      clickstack:
+        condition: service_healthy
+
+networks:
+  default:
+    name: clickstack-demo
+    driver: bridge
