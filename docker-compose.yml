@@ -116,7 +116,9 @@ services:
     image: ghcr.io/clickhouse/clickstack-demo-subscription-app:26.4.0-load-generator
     build: ./load-generator
     container_name: load-generator
-    restart: no
+    profiles:
+      - load-generator
+    restart: unless-stopped
     environment:
       - LOCUST_WEB_PORT=8081
       - LOCUST_USERS=5
