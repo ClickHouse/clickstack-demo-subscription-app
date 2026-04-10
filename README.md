@@ -14,7 +14,7 @@ After the data is sent from the OpenTelemetry collector to ClickHouse, it is pos
 ## Quick Start
 
 1. **Create a ClickHouse Cloud service**
-  - https://console.clickhouse.cloud
+    - https://console.clickhouse.cloud
 
 2. **Clone the repo**
    ```bash
