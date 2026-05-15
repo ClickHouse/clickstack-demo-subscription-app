@@ -13,42 +13,37 @@ After the data is sent from the OpenTelemetry collector to ClickHouse, it is pos
 
 ## Quick Start
 
-1. **Clone the repo**
+1. **Create a ClickHouse Cloud service**
+    - https://console.clickhouse.cloud
+
+2. **Clone the repo**
    ```bash
    git clone https://github.com/ClickHouse/clickstack-demo-subscription-app
+   ```
+
+3. **Access the main directory**
+   ```bash
    cd clickstack-demo-subscription-app
    ```
 
-2. **Start ClickStack**
+4. **Create a .env file**
    ```bash
-   docker compose up clickstack -d
+   CLICKHOUSE_ENDPOINT=<HOST-WITH-PORT>
+   CLICKHOUSE_USER=default
+   CLICKHOUSE_PASSWORD=<PASSWORD>
+   HYPERDX_API_KEY=<INGESTION-PASSWORD>
    ```
 
-3. **Access ClickStack**
-   - http://localhost:8080
+5. **Edit .env with the connection information to your service**
 
-4. **Set up HyperDX by creating username and password that meet the requirements**
+6. **Edit .env with your own HyperDX API key to securely ingest data**
 
-5. **Click Add Data**
-
-6. **Copy your ingestion API Key**
-
-7. **Paste your ingestion API Key**
+7. **Start all services**
    ```bash
-   echo "HYPERDX_API_KEY=paste-your-api-key-here" > .env
+   docker compose up -d
    ```
 
-8. **Start the remaining services**
-   ```bash
-   docker compose --env-file .env up -d
-   ```
-
-9. **(Optional) Add ClickStack to hosts**
-   ```bash
-   sudo echo "127.0.0.1 clickstack" >> /etc/hosts
-   ```
-
-10. **(Optional) Access the subscription app in your browser**
+8. **(Optional) Access the subscription app in your browser**
     - http://localhost:8000
 
 ## Contributing
