@@ -160,14 +160,16 @@
         </section>
     </main>
 
-    <script src="//www.unpkg.com/@hyperdx/browser@0.21.0/build/index.js"></script>
+    <script src="//www.unpkg.com/@hyperdx/browser@0.22.0/build/index.js"></script>
     <script>
         // HyperDX Configuration from server
         const hyperdxConfig = {{ hyperdx_config | tojson | safe}};
         window.HyperDX.init({
             apiKey: hyperdxConfig.api_key,
             service: hyperdxConfig.service_name,            
-            url: hyperdxConfig.endpoint,
+            url: ['localhost', '127.0.0.1'].includes(window.location.hostname)
+                 ? 'http://localhost:4318'
+                 : hyperdxConfig.endpoint,
             consoleCapture: true,
             advancedNetworkCapture: true,
             disableReplay: false        

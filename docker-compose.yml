@@ -1,24 +1,24 @@
 services:
   clickstack:
-    image: clickhouse/clickstack-all-in-one:2.11.0
+    image: clickhouse/clickstack-otel-collector:2.19.0
     container_name: clickstack
     ports:
-      - 8080:8080
       - 4317:4317
       - 4318:4318
-    volumes:
-      - ./clickstack/db:/data/db
-      - ./clickstack/ch_data:/var/lib/clickhouse
-      - ./clickstack/ch_logs:/var/log/clickhouse-server
+    environment:
+      - OTLP_AUTH_TOKEN=${HYPERDX_API_KEY}
+      - CLICKHOUSE_ENDPOINT=${CLICKHOUSE_ENDPOINT}
+      - CLICKHOUSE_USER=${CLICKHOUSE_USER}
+      - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD}
     healthcheck:
-      test: ["CMD", "curl", "--fail", "http://localhost:8123/ping"]
+      test: ["CMD", "nc", "-z", "localhost", "13133"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
 
   postgres-db:
-    image: postgres:18.1
+    image: postgres:18.3
     container_name: postgres-db
     volumes:
       - ./postgresql-db/init.sql:/docker-entrypoint-initdb.d/init.sql
@@ -34,7 +34,7 @@ services:
       start_period: 40s
 
   subscription-app:
-    image: ghcr.io/clickhouse/clickstack-demo-subscription-app:25.12.0-subscription-app
+    image: ghcr.io/clickhouse/clickstack-demo-subscription-app:26.4.0-subscription-app
     build: ./subscription-app
     container_name: subscription-app
     ports:
@@ -47,7 +47,7 @@ services:
       - POSTGRES_PASSWORD=changeme
       - POSTGRES_DATABASE=postgres
 
-      # HyperDX Configuration (fallback values if Parameter Store is unavailable)
+      # HyperDX Configuration
       - HYPERDX_API_KEY=${HYPERDX_API_KEY}
       - OTEL_SERVICE_NAME=subscription-backend
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://clickstack:4318
@@ -85,9 +85,11 @@ services:
         condition: service_healthy
       docs-loader:
         condition: service_healthy
+      otel-collector:
+        condition: service_healthy
 
   docs-loader:
-    image: ghcr.io/clickhouse/clickstack-demo-subscription-app:25.12.0-docs-loader
+    image: ghcr.io/clickhouse/clickstack-demo-subscription-app:26.4.0-docs-loader
     build: ./docs-loader
     container_name: docs-loader
     restart: unless-stopped
@@ -111,9 +113,11 @@ services:
     depends_on:
       clickstack:
         condition: service_healthy
+      otel-collector:
+        condition: service_healthy
 
   load-generator:
-    image: ghcr.io/clickhouse/clickstack-demo-subscription-app:25.12.0-load-generator
+    image: ghcr.io/clickhouse/clickstack-demo-subscription-app:26.4.0-load-generator
     build: ./load-generator
     container_name: load-generator
     restart: unless-stopped
@@ -145,7 +149,7 @@ services:
       start_period: 40s
 
   otel-collector:
-    image: ghcr.io/clickhouse/clickstack-demo-subscription-app:26.1.0-otel-collector
+    image: ghcr.io/clickhouse/clickstack-demo-subscription-app:26.4.0-otel-collector
     build: ./otel-collector
     container_name: otel-collector
     volumes:
