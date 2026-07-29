@@ -102,6 +102,7 @@ services:
     environment:
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://clickstack:4318
       - OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf
+      - OTEL_EXPORTER_OTLP_INSECURE=true
       - OTEL_SERVICE_NAME=docs-loader
       - OTEL_EXPORTER_OTLP_HEADERS=authorization=${HYPERDX_API_KEY}
     healthcheck:
