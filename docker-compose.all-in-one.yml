@@ -1,6 +1,6 @@
 services:
   clickstack:
-    image: clickhouse/clickstack-all-in-one:2.19.0
+    image: clickhouse/clickstack-all-in-one:latest
     container_name: clickstack
     ports:
       - 8080:8080
@@ -34,7 +34,7 @@ services:
       start_period: 40s
 
   subscription-app:
-    image: ghcr.io/clickhouse/clickstack-demo-subscription-app:26.4.0-subscription-app
+    image: ghcr.io/clickhouse/clickstack-demo-subscription-app:26.4.0-subscription-app-elixir
     build: ./subscription-app
     container_name: subscription-app
     ports:
@@ -87,7 +87,7 @@ services:
         condition: service_healthy
 
   docs-loader:
-    image: ghcr.io/clickhouse/clickstack-demo-subscription-app:26.4.0-docs-loader
+    image: ghcr.io/clickhouse/clickstack-demo-subscription-app:26.4.0-docs-loader-elixir
     build: ./docs-loader
     container_name: docs-loader
     restart: unless-stopped
