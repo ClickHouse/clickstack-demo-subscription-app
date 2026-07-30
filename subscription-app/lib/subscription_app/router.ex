@@ -6,6 +6,7 @@ defmodule SubscriptionApp.Router do
 
   use Plug.Router
   require Logger
+  require OpenTelemetry.Tracer
 
   plug(:match)
 
@@ -83,7 +84,7 @@ defmodule SubscriptionApp.Router do
           submitted_at = EXCLUDED.submitted_at;
       """
 
-      case Postgrex.query(SubscriptionApp.Repo, insert_query, params) do
+      case db_query("INSERT users", "INSERT", insert_query, params) do
         {:ok, _result} ->
           send_json(conn, 200, %{
             success: true,
@@ -123,7 +124,7 @@ defmodule SubscriptionApp.Router do
     port = Application.get_env(:subscription_app, :docs_loader_port, 8001)
     url = "http://#{host}:#{port}/load"
 
-    case Req.get(url) do
+    case proxy_get(url, host, port) do
       {:ok, %Req.Response{status: status, body: body}} when status >= 200 and status < 400 ->
         send_json(conn, 200, body)
 
@@ -143,7 +144,7 @@ defmodule SubscriptionApp.Router do
 
     now = DateTime.utc_now() |> DateTime.to_iso8601()
 
-    case Postgrex.query(SubscriptionApp.Repo, "SELECT 1;", []) do
+    case db_query("SELECT", "SELECT", "SELECT 1;", []) do
       {:ok, _} ->
         send_json(conn, 200, %{
           status: "healthy",
@@ -185,6 +186,56 @@ defmodule SubscriptionApp.Router do
   # ---------------------------------------------------------------------------
   # Helpers
   # ---------------------------------------------------------------------------
+
+  # Run a Postgrex query inside a client span, mirroring the DB-query spans the
+  # original Flask app got from opentelemetry-instrumentation-psycopg2.
+  defp db_query(span_name, operation, statement, params) do
+    OpenTelemetry.Tracer.with_span span_name, %{
+      kind: :client,
+      attributes: %{
+        "db.system" => "postgresql",
+        "db.operation" => operation,
+        "db.statement" => statement,
+        "db.name" => db_name()
+      }
+    } do
+      Postgrex.query(SubscriptionApp.Repo, statement, params)
+    end
+  end
+
+  defp db_name do
+    Application.get_env(:subscription_app, SubscriptionApp.Repo, [])
+    |> Keyword.get(:database, "postgres")
+  end
+
+  # Outbound HTTP call inside a client span, mirroring the spans the original
+  # Flask app got from opentelemetry-instrumentation-requests.
+  defp proxy_get(url, host, port) do
+    OpenTelemetry.Tracer.with_span "GET", %{
+      kind: :client,
+      attributes: %{
+        "http.request.method" => "GET",
+        "url.full" => url,
+        "server.address" => host,
+        "server.port" => port
+      }
+    } do
+      case Req.get(url) do
+        {:ok, %Req.Response{status: status}} = ok ->
+          OpenTelemetry.Tracer.set_attribute("http.response.status_code", status)
+          ok
+
+        {:error, err} = error ->
+          OpenTelemetry.Tracer.set_attributes(%{
+            "error" => true,
+            "exception.message" => Exception.message(err)
+          })
+
+          error
+      end
+    end
+  end
+
   defp validate(data, field) do
     case Map.get(data, field) do
       nil -> {:missing, field}
