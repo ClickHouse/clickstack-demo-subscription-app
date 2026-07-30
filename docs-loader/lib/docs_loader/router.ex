@@ -13,7 +13,28 @@ defmodule DocsLoader.Router do
   @chunk_size 1024 * 1024
 
   plug(:match)
+
+  # Access log at INFO for every request (mirrors the Go wrapHandler, which
+  # logged "request received"/"request completed" and shipped them via OTLP).
+  plug(:access_log)
+
   plug(:dispatch)
+
+  defp access_log(conn, _opts) do
+    Logger.info("request received: #{conn.method} #{conn.request_path}")
+    start = System.monotonic_time()
+
+    register_before_send(conn, fn conn ->
+      duration_ms =
+        System.convert_time_unit(System.monotonic_time() - start, :native, :millisecond)
+
+      Logger.info(
+        "request completed: #{conn.method} #{conn.request_path} #{conn.status} #{duration_ms}ms"
+      )
+
+      conn
+    end)
+  end
 
   # Status / health endpoint. Handle HEAD as well as GET: the compose
   # healthcheck uses `wget --spider`, which issues a HEAD request, and the
@@ -29,7 +50,6 @@ defmodule DocsLoader.Router do
   # process memory without bound until the container hits its memory limit
   # and is OOM-killed. It intentionally never sends a normal response.
   get "/load" do
-    Logger.info("request received: GET /load")
     leak([], 0)
     # Unreachable in practice.
     send_resp(conn, 200, ~s({"status":"ok"}))

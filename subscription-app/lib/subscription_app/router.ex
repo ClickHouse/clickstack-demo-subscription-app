@@ -9,6 +9,10 @@ defmodule SubscriptionApp.Router do
 
   plug(:match)
 
+  # Access log at INFO for every request (mirrors the Flask log_request()
+  # INFO line, which the original service shipped to ClickStack over OTLP).
+  plug(:access_log)
+
   plug(Plug.Parsers,
     parsers: [:json],
     pass: ["application/json"],
@@ -16,6 +20,29 @@ defmodule SubscriptionApp.Router do
   )
 
   plug(:dispatch)
+
+  defp access_log(conn, _opts) do
+    start = System.monotonic_time()
+
+    client_ip =
+      case get_req_header(conn, "x-forwarded-for") do
+        [xff | _] -> xff
+        _ -> conn.remote_ip |> :inet.ntoa() |> to_string()
+      end
+
+    user_agent = conn |> get_req_header("user-agent") |> List.first() || "-"
+
+    register_before_send(conn, fn conn ->
+      duration_ms =
+        System.convert_time_unit(System.monotonic_time() - start, :native, :millisecond)
+
+      Logger.info(
+        ~s(#{client_ip} "#{conn.method} #{conn.request_path}" #{conn.status} #{duration_ms}ms "#{user_agent}")
+      )
+
+      conn
+    end)
+  end
 
   # ---------------------------------------------------------------------------
   # GET / -> rendered HTML page with injected HyperDX config
