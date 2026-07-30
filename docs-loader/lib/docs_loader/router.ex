@@ -15,8 +15,10 @@ defmodule DocsLoader.Router do
   plug(:match)
   plug(:dispatch)
 
-  # Status / health endpoint.
-  get "/" do
+  # Status / health endpoint. Handle HEAD as well as GET: the compose
+  # healthcheck uses `wget --spider`, which issues a HEAD request, and the
+  # original Go server answered HEAD automatically.
+  match "/", via: [:get, :head] do
     conn
     |> put_resp_content_type("application/json")
     |> send_resp(200, ~s({"status":"ok"}))
