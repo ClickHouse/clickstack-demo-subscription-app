@@ -9,6 +9,10 @@ defmodule SubscriptionApp.Application do
     # Auto-instrument Bandit HTTP spans.
     _ = OpentelemetryBandit.setup()
 
+    # Name server spans "{METHOD} {route}" (e.g. "POST /api/subscribe") instead
+    # of the bare method Bandit emits, using Plug's matched route template.
+    setup_span_naming()
+
     # Export Logger events as OTLP logs (mirrors the original Flask logging
     # instrumentation, which the trace-only opentelemetry_exporter cannot do).
     setup_otel_logs()
@@ -34,6 +38,27 @@ defmodule SubscriptionApp.Application do
 
     opts = [strategy: :one_for_one, name: SubscriptionApp.Supervisor]
     Supervisor.start_link(children, opts)
+  end
+
+  defp setup_span_naming do
+    :telemetry.attach(
+      "otel-span-route-name",
+      [:plug, :router_dispatch, :start],
+      &__MODULE__.rename_span/4,
+      nil
+    )
+  end
+
+  # Runs in the request process, so the current span is the Bandit server span.
+  def rename_span(_event, _measurements, %{conn: conn, route: route}, _config) do
+    ctx = :otel_tracer.current_span_ctx()
+    :otel_span.update_name(ctx, "#{conn.method} #{route}")
+    :otel_span.set_attribute(ctx, "http.route", route)
+    :ok
+  rescue
+    _ -> :ok
+  catch
+    _, _ -> :ok
   end
 
   defp setup_otel_logs do
