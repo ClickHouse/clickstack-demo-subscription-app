@@ -1,10 +1,10 @@
 # ClickHouse Subscription Demo App
 
-A Flask-based web application that showcases ClickHouse features while collecting user subscriptions. The app is fully instrumented with HyperDX OpenTelemetry for observability and monitoring.
+An Elixir-based web application that showcases ClickHouse features while collecting user subscriptions. The app is fully instrumented with HyperDX OpenTelemetry for observability and monitoring.
 
 ## Overview
 
-This project demonstrates ClickStack Observability through full OpenTelemetry instrumentation for monitoring and debugging, both in front-end (browser) and back-end (Python and Go).
+This project demonstrates ClickStack Observability through full OpenTelemetry instrumentation for monitoring and debugging, both in front-end (browser) and back-end. Both back-end services — the `subscription-app` and the `docs-loader` — are written in Elixir (Mix + Plug + Bandit), with the `subscription-app` using Postgrex to talk to PostgreSQL.
 After the data is sent from the OpenTelemetry collector to ClickHouse, it is possible to use HyperDX to visualize data and get insights.
 
 ## Architecture
