@@ -97,9 +97,9 @@ services:
       resources:
         limits:
           # Raised from 10M: the BEAM idles at ~180 MiB, well above the old
-          # limit that suited the tiny Go binary. 512M leaves headroom while
+          # limit that suited the tiny Go binary. 256M leaves headroom while
           # still letting the /load memory-growth demo exceed it and OOM.
-          memory: 512M
+          memory: 256M
     ports:
       - 8001:8001
     environment:
