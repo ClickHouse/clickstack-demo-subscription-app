@@ -69,8 +69,9 @@ services:
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:8000/health"]
-      interval: 1s
-      timeout: 1s
+      interval: 30s
+      start_interval: 2s
+      timeout: 5s
       retries: 3
       start_period: 40s
     logging:
@@ -108,8 +109,9 @@ services:
       - OTEL_EXPORTER_OTLP_HEADERS=authorization=${HYPERDX_API_KEY}
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8001"]
-      interval: 1s
-      timeout: 1s
+      interval: 30s
+      start_interval: 2s
+      timeout: 5s
       retries: 3
       start_period: 40s
     depends_on:
