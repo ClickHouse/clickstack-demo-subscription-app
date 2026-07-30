@@ -68,17 +68,40 @@ otlp_protocol =
 config :opentelemetry, :resource,
   service: %{name: get.("OTEL_SERVICE_NAME", "subscription-backend")}
 
-exporter_opts = [endpoints: [otlp_endpoint]]
+# Authorization/headers for OTLP export. ClickStack rejects exports without an
+# authorization header (HTTP 401). Take OTEL_EXPORTER_OTLP_HEADERS if set,
+# otherwise fall back to HYPERDX_API_KEY as authorization (as the original
+# HyperDX SDK did). Kept as {binary, binary} pairs for opentelemetry_exporter.
+otlp_header_pairs =
+  case get.("OTEL_EXPORTER_OTLP_HEADERS", "") do
+    "" ->
+      case get.("HYPERDX_API_KEY", "") do
+        "" -> []
+        key -> [{"authorization", key}]
+      end
 
+    raw ->
+      raw
+      |> String.split(",", trim: true)
+      |> Enum.flat_map(fn pair ->
+        case String.split(pair, "=", parts: 2) do
+          [k, v] -> [{String.trim(k), String.trim(v)}]
+          _ -> []
+        end
+      end)
+  end
+
+# Note: set only otlp_endpoint (the base). The exporter appends the signal
+# path (/v1/traces). Setting otlp_traces_endpoint would be treated as the exact
+# path and send spans to "/" instead.
 config :opentelemetry_exporter,
   otlp_protocol: otlp_protocol,
   otlp_endpoint: otlp_endpoint,
-  otlp_traces_endpoint: otlp_endpoint
+  otlp_headers: otlp_header_pairs
 
 # OTEL_EXPORTER_OTLP_INSECURE is honored implicitly via the http/https scheme
 # of the endpoint; keep a reference so misconfiguration is visible in logs.
 _ = System.get_env("OTEL_EXPORTER_OTLP_INSECURE")
-_ = exporter_opts
 
 # ---------------------------------------------------------------------------
 # OTLP logs export.
@@ -89,24 +112,11 @@ _ = exporter_opts
 # OTEL_EXPORTER_OTLP_HEADERS if set, else from HYPERDX_API_KEY (as the original
 # HyperDX SDK did).
 # ---------------------------------------------------------------------------
+# :httpc wants charlist header tuples; reuse the pairs parsed for the exporter.
 log_headers =
-  case get.("OTEL_EXPORTER_OTLP_HEADERS", "") do
-    "" ->
-      case get.("HYPERDX_API_KEY", "") do
-        "" -> []
-        key -> [{~c"authorization", String.to_charlist(key)}]
-      end
-
-    raw ->
-      raw
-      |> String.split(",", trim: true)
-      |> Enum.flat_map(fn pair ->
-        case String.split(pair, "=", parts: 2) do
-          [k, v] -> [{String.to_charlist(String.trim(k)), String.to_charlist(String.trim(v))}]
-          _ -> []
-        end
-      end)
-  end
+  Enum.map(otlp_header_pairs, fn {k, v} ->
+    {String.to_charlist(k), String.to_charlist(v)}
+  end)
 
 config :subscription_app, :otel_logs,
   enabled: true,
