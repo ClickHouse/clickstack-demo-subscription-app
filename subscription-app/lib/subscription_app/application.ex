@@ -9,6 +9,10 @@ defmodule SubscriptionApp.Application do
     # Auto-instrument Bandit HTTP spans.
     _ = OpentelemetryBandit.setup()
 
+    # Export Logger events as OTLP logs (mirrors the original Flask logging
+    # instrumentation, which the trace-only opentelemetry_exporter cannot do).
+    setup_otel_logs()
+
     port = Application.get_env(:subscription_app, :port, 8000)
     host = Application.get_env(:subscription_app, :host, "0.0.0.0")
 
@@ -30,6 +34,24 @@ defmodule SubscriptionApp.Application do
 
     opts = [strategy: :one_for_one, name: SubscriptionApp.Supervisor]
     Supervisor.start_link(children, opts)
+  end
+
+  defp setup_otel_logs do
+    cfg = Application.get_env(:subscription_app, :otel_logs, [])
+
+    if cfg[:enabled] do
+      :logger.add_handler(:otlp_logs, SubscriptionApp.OtelLogHandler, %{
+        level: cfg[:level] || :info,
+        config: %{
+          service_name: cfg[:service_name],
+          scope: "subscription_app",
+          logs_url: cfg[:logs_url],
+          http_headers: cfg[:http_headers]
+        }
+      })
+
+      Logger.info("OTLP log export enabled -> #{cfg[:logs_url]}")
+    end
   end
 
   # Convert a bind address string into a tuple Bandit/Thousand Island accepts.

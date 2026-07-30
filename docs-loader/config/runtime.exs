@@ -69,3 +69,17 @@ if endpoint do
 
   config :opentelemetry_exporter, otlp_opts
 end
+
+# --- OTLP logs export ------------------------------------------------------
+# The opentelemetry_exporter only ships traces, so logs are exported by a
+# small custom :logger handler (DocsLoader.OtelLogHandler) that POSTs OTLP
+# JSON to <endpoint>/v1/logs. Headers are reused from OTEL_EXPORTER_OTLP_HEADERS.
+log_headers =
+  Enum.map(headers, fn {k, v} -> {String.to_charlist(k), String.to_charlist(v)} end)
+
+config :docs_loader, :otel_logs,
+  enabled: endpoint != nil,
+  service_name: service_name,
+  logs_url: endpoint && String.trim_trailing(endpoint, "/") <> "/v1/logs",
+  http_headers: log_headers,
+  level: :info

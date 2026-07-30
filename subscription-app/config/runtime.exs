@@ -79,3 +79,38 @@ config :opentelemetry_exporter,
 # of the endpoint; keep a reference so misconfiguration is visible in logs.
 _ = System.get_env("OTEL_EXPORTER_OTLP_INSECURE")
 _ = exporter_opts
+
+# ---------------------------------------------------------------------------
+# OTLP logs export.
+#
+# The opentelemetry_exporter only ships traces, so logs are exported by a small
+# custom :logger handler (SubscriptionApp.OtelLogHandler) that POSTs OTLP JSON
+# to <endpoint>/v1/logs. The authorization header comes from
+# OTEL_EXPORTER_OTLP_HEADERS if set, else from HYPERDX_API_KEY (as the original
+# HyperDX SDK did).
+# ---------------------------------------------------------------------------
+log_headers =
+  case get.("OTEL_EXPORTER_OTLP_HEADERS", "") do
+    "" ->
+      case get.("HYPERDX_API_KEY", "") do
+        "" -> []
+        key -> [{~c"authorization", String.to_charlist(key)}]
+      end
+
+    raw ->
+      raw
+      |> String.split(",", trim: true)
+      |> Enum.flat_map(fn pair ->
+        case String.split(pair, "=", parts: 2) do
+          [k, v] -> [{String.to_charlist(String.trim(k)), String.to_charlist(String.trim(v))}]
+          _ -> []
+        end
+      end)
+  end
+
+config :subscription_app, :otel_logs,
+  enabled: true,
+  service_name: get.("OTEL_SERVICE_NAME", "subscription-backend"),
+  logs_url: String.trim_trailing(otlp_endpoint, "/") <> "/v1/logs",
+  http_headers: log_headers,
+  level: log_level
