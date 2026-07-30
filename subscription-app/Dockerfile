@@ -1,43 +1,67 @@
-# Use Python 3.13 slim image as base
-FROM python:3.13.5-slim
+# ---------------------------------------------------------------------------
+# Build stage: compile the app and assemble a Mix release.
+# ---------------------------------------------------------------------------
+FROM hexpm/elixir:1.18.3-erlang-27.3-debian-bookworm-20250317-slim AS build
 
-# Set environment variables
-ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1 \
-    FLASK_APP=flask_app.py \
-    FLASK_ENV=production
-
-# Set work directory
-WORKDIR /app
-
-# Install system dependencies
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends \
-        gcc \
-        python3-dev \
+# Build tooling for native deps (e.g. bandit's thousand_island, exporter).
+RUN apt-get update -y \
+    && apt-get install -y --no-install-recommends build-essential git \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements first to leverage Docker cache
-COPY requirements.txt .
+WORKDIR /app
 
-# Install Python dependencies
-RUN pip install --no-cache-dir --upgrade pip \
-    && pip install --no-cache-dir -r requirements.txt
+ENV MIX_ENV=prod
 
-# Install opentelemtery-bootstrap for auto-instrumentation
-RUN opentelemetry-bootstrap --action=install
+RUN mix local.hex --force \
+    && mix local.rebar --force
 
-# Copy application code
-COPY flask_app.py .
+# Fetch and compile dependencies first (cache friendly).
+COPY mix.exs ./
+RUN mix deps.get --only prod
+RUN mix deps.compile
 
-# Copy static files
-COPY static/ static/
-COPY templates/ templates/
+# Application config.
+COPY config config
 
-# Create non-root user for security
-RUN adduser --disabled-password --gecos '' appuser \
-    && chown -R appuser:appuser /app
+# Application source and assets.
+COPY lib lib
+COPY priv priv
+
+RUN mix compile
+
+# Runtime config + release assembly.
+RUN mix release
+
+# ---------------------------------------------------------------------------
+# Runtime stage: slim Debian with only runtime libs + curl for healthcheck.
+# ---------------------------------------------------------------------------
+FROM debian:bookworm-slim AS app
+
+RUN apt-get update -y \
+    && apt-get install -y --no-install-recommends \
+        curl \
+        libssl3 \
+        libncurses6 \
+        locales \
+        ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# UTF-8 locale (Erlang/Elixir expect a sane locale).
+RUN sed -i '/en_US.UTF-8/s/^# //g' /etc/locale.gen && locale-gen
+ENV LANG=en_US.UTF-8 \
+    LANGUAGE=en_US:en \
+    LC_ALL=en_US.UTF-8
+
+WORKDIR /app
+
+# Non-root user.
+RUN useradd --create-home --shell /bin/bash appuser
+COPY --from=build --chown=appuser:appuser /app/_build/prod/rel/subscription_app ./
 USER appuser
 
-# Run the application
-CMD ["opentelemetry-instrument", "python", "flask_app.py"]
+ENV FLASK_HOST=0.0.0.0 \
+    FLASK_PORT=8000
+
+EXPOSE 8000
+
+CMD ["/app/bin/subscription_app", "start"]

@@ -68,7 +68,7 @@ services:
       - LOG_LEVEL=INFO
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/health')"]
+      test: ["CMD", "curl", "-fsS", "http://localhost:8000/health"]
       interval: 1s
       timeout: 1s
       retries: 3
@@ -94,7 +94,10 @@ services:
     deploy:
       resources:
         limits:
-          memory: 10M
+          # Raised from 10M: the BEAM idles at ~180 MiB, well above the old
+          # limit that suited the tiny Go binary. 512M leaves headroom while
+          # still letting the /load memory-growth demo exceed it and OOM.
+          memory: 512M
     ports:
       - 8001:8001
     environment:
