@@ -1,0 +1,70 @@
+# ClickStack OTel collector: the ingestion gateway. Apps and the
+# infra otel-collector send OTLP here; it forwards to ClickHouse Cloud.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: clickstack
+  labels:
+    app: clickstack
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: clickstack
+  template:
+    metadata:
+      labels:
+        app: clickstack
+    spec:
+      containers:
+        - name: clickstack
+          image: clickhouse/clickstack-otel-collector:2.19.0
+          ports:
+            - { name: otlp-grpc, containerPort: 4317 }
+            - { name: otlp-http, containerPort: 4318 }
+            - { name: health, containerPort: 13133 }
+          env:
+            - name: OTLP_AUTH_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: clickstack-secrets
+                  key: HYPERDX_API_KEY
+            - name: CLICKHOUSE_ENDPOINT
+              valueFrom:
+                secretKeyRef:
+                  name: clickstack-secrets
+                  key: CLICKHOUSE_ENDPOINT
+            - name: CLICKHOUSE_USER
+              valueFrom:
+                secretKeyRef:
+                  name: clickstack-secrets
+                  key: CLICKHOUSE_USER
+            - name: CLICKHOUSE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: clickstack-secrets
+                  key: CLICKHOUSE_PASSWORD
+          readinessProbe:
+            tcpSocket: { port: 13133 }
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket: { port: 13133 }
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          resources:
+            requests: { cpu: 100m, memory: 256Mi }
+            limits: { cpu: "1", memory: 1Gi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: clickstack
+  labels:
+    app: clickstack
+spec:
+  selector:
+    app: clickstack
+  ports:
+    - { name: otlp-grpc, port: 4317, targetPort: 4317 }
+    - { name: otlp-http, port: 4318, targetPort: 4318 }

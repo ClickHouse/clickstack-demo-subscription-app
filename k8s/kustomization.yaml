@@ -1,0 +1,40 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Everything lands in this namespace (cluster-scoped objects like the
+# otel-collector ClusterRole/Binding are left cluster-scoped automatically).
+namespace: clickstack-demo
+
+resources:
+  - namespace.yaml
+  - clickstack.yaml
+  - postgres.yaml
+  - docs-loader.yaml
+  - subscription-app.yaml
+  - load-generator.yaml
+  - otel-collector.yaml
+
+# Secrets are generated from a local, git-ignored env file so credentials
+# never live in a committed manifest. Create secret.env with your ClickHouse
+# Cloud / HyperDX values before applying -- see README.md ("Quick Start").
+#
+# This keeps k8s/ self-contained: kustomize cannot read files above its own
+# directory, so reusing the repo-root `.env` would force every command to carry
+# `--load-restrictor LoadRestrictionsNone`. The values are the same four keys,
+# so `cp ../.env secret.env` is a valid shortcut if you already ran compose.
+secretGenerator:
+  - name: clickstack-secrets
+    envs:
+      - secret.env
+
+# Stable resource names (no content-hash suffix) so this is easy to read,
+# kubectl get, and reason about in a demo.
+generatorOptions:
+  disableNameSuffixHash: true
+
+# includeSelectors keeps this label in Deployment selectors too (what the
+# older `commonLabels` field did), so the rendered output is unchanged.
+labels:
+  - includeSelectors: true
+    pairs:
+      app.kubernetes.io/part-of: clickstack-demo
