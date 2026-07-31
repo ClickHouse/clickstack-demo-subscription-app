@@ -1,4 +1,5 @@
 .env
+k8s/secret.env
 **/.DS_Store
 clickhouse/**
 clickstack/**

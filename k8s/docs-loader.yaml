@@ -1,0 +1,60 @@
+# Go "docs loader" helper service called by the subscription app.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: docs-loader
+  labels:
+    app: docs-loader
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: docs-loader
+  template:
+    metadata:
+      labels:
+        app: docs-loader
+    spec:
+      containers:
+        - name: docs-loader
+          image: ghcr.io/clickhouse/clickstack-demo-subscription-app:26.4.0-docs-loader
+          ports:
+            - { name: http, containerPort: 8001 }
+          env:
+            - { name: PORT, value: "8001" }
+            - { name: OTEL_EXPORTER_OTLP_ENDPOINT, value: http://clickstack:4318 }
+            - { name: OTEL_EXPORTER_OTLP_PROTOCOL, value: http/protobuf }
+            # The endpoint is plain http, so the exporter must be told it is
+            # insecure or it applies a TLS client config and crashes at startup.
+            - { name: OTEL_EXPORTER_OTLP_INSECURE, value: "true" }
+            - { name: OTEL_SERVICE_NAME, value: docs-loader }
+            # HDX_KEY must be declared before the var that interpolates it.
+            - name: HDX_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: clickstack-secrets
+                  key: HYPERDX_API_KEY
+            - name: OTEL_EXPORTER_OTLP_HEADERS
+              value: authorization=$(HDX_KEY)
+          readinessProbe:
+            httpGet: { path: /, port: 8001 }
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          # The tight memory limit is deliberate and matches docker-compose:
+          # GET /load grows memory in the request handler and never responds,
+          # so the container gets OOM-killed. That OOM *is* the demo.
+          resources:
+            requests: { cpu: 10m, memory: 10M }
+            limits: { cpu: 200m, memory: 10M }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: docs-loader
+  labels:
+    app: docs-loader
+spec:
+  selector:
+    app: docs-loader
+  ports:
+    - { name: http, port: 8001, targetPort: 8001 }

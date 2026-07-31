@@ -1,0 +1,160 @@
+# Infra metrics collector. In docker-compose this scraped the Docker socket
+# (via socat) with the docker_stats receiver. Kubernetes has no Docker
+# socket, so we use the K8s-native kubeletstats + k8s_cluster receivers
+# instead. Both ship in the otel-collector-contrib distro this image is
+# built from.
+#
+# NOTE: kubeletstats here scrapes only the node this pod runs on. That's
+# fine for a single-node demo cluster (kind/minikube/Docker Desktop). For a
+# multi-node cluster, split this into a DaemonSet (kubeletstats, one per
+# node) plus a single-replica Deployment (k8s_cluster).
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: otel-collector
+  labels:
+    app: otel-collector
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: clickstack-demo-otel-collector
+  labels:
+    app: otel-collector
+rules:
+  - apiGroups: [""]
+    resources:
+      - nodes
+      - nodes/stats
+      - nodes/proxy
+      - nodes/metrics
+      - pods
+      - namespaces
+      - services
+      - endpoints
+      - events
+      - replicationcontrollers
+      - resourcequotas
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["apps"]
+    resources: ["deployments", "daemonsets", "replicasets", "statefulsets"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["batch"]
+    resources: ["jobs", "cronjobs"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["autoscaling"]
+    resources: ["horizontalpodautoscalers"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: clickstack-demo-otel-collector
+  labels:
+    app: otel-collector
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: clickstack-demo-otel-collector
+subjects:
+  - kind: ServiceAccount
+    name: otel-collector
+    # namespace is set by kustomize (clickstack-demo)
+    namespace: clickstack-demo
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: otel-collector-config
+  labels:
+    app: otel-collector
+data:
+  config.yaml: |
+    extensions:
+      health_check:
+        endpoint: 0.0.0.0:13133
+
+    receivers:
+      kubeletstats:
+        collection_interval: 15s
+        auth_type: serviceAccount
+        endpoint: https://${env:K8S_NODE_NAME}:10250
+        insecure_skip_verify: true
+        metric_groups:
+          - node
+          - pod
+          - container
+      k8s_cluster:
+        collection_interval: 15s
+
+    exporters:
+      otlp/hdx:
+        endpoint: 'clickstack:4317'
+        headers:
+          authorization: ${env:HYPERDX_API_KEY}
+        tls:
+          insecure: true
+      debug:
+        verbosity: basic
+
+    processors:
+      batch:
+
+    service:
+      extensions: [health_check]
+      pipelines:
+        metrics:
+          receivers: [kubeletstats, k8s_cluster]
+          processors: [batch]
+          exporters: [otlp/hdx]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: otel-collector
+  labels:
+    app: otel-collector
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: otel-collector
+  template:
+    metadata:
+      labels:
+        app: otel-collector
+    spec:
+      serviceAccountName: otel-collector
+      containers:
+        - name: otel-collector
+          image: ghcr.io/clickhouse/clickstack-demo-subscription-app:26.4.0-otel-collector
+          ports:
+            - { name: health, containerPort: 13133 }
+          env:
+            - name: K8S_NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: HYPERDX_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: clickstack-secrets
+                  key: HYPERDX_API_KEY
+          volumeMounts:
+            - name: config
+              mountPath: /etc/otelcol-contrib
+          readinessProbe:
+            httpGet: { path: /, port: 13133 }
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: { path: /, port: 13133 }
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          resources:
+            requests: { cpu: 100m, memory: 128Mi }
+            limits: { cpu: "1", memory: 512Mi }
+      volumes:
+        - name: config
+          configMap:
+            name: otel-collector-config

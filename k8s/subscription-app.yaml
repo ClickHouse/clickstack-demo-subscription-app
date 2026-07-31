@@ -1,0 +1,78 @@
+# The Flask subscription app (frontend + backend), fully OTel-instrumented.
+# A plain ClusterIP Service: the load-generator reaches it in-cluster at
+# http://subscription-app:8000, and you reach it from the host with
+# `kubectl port-forward` (see README). Deliberately not a NodePort -- on kind
+# node ports aren't published to the host unless the cluster was created with
+# extraPortMappings, so a NodePort URL would just hang there.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: subscription-app
+  labels:
+    app: subscription-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: subscription-app
+  template:
+    metadata:
+      labels:
+        app: subscription-app
+    spec:
+      containers:
+        - name: subscription-app
+          image: ghcr.io/clickhouse/clickstack-demo-subscription-app:26.4.0-subscription-app
+          ports:
+            - { name: http, containerPort: 8000 }
+          env:
+            # PostgreSQL
+            - { name: POSTGRES_HOST, value: postgres-db }
+            - { name: POSTGRES_PORT, value: "5432" }
+            - { name: POSTGRES_USERNAME, value: postgres }
+            - { name: POSTGRES_PASSWORD, value: changeme }
+            - { name: POSTGRES_DATABASE, value: postgres }
+            # HyperDX / OTel
+            - name: HYPERDX_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: clickstack-secrets
+                  key: HYPERDX_API_KEY
+            - { name: OTEL_SERVICE_NAME, value: subscription-backend }
+            - { name: OTEL_EXPORTER_OTLP_ENDPOINT, value: http://clickstack:4318 }
+            - { name: HYPERDX_ENABLE_ADVANCED_NETWORK_CAPTURE, value: "1" }
+            - { name: HYPERDX_SERVICE_NAME, value: subscription-frontend }
+            - { name: HYPERDX_ENDPOINT, value: http://clickstack:4318 }
+            # Docs loader
+            - { name: DOCS_LOADER_HOST, value: docs-loader }
+            - { name: DOCS_LOADER_PORT, value: "8001" }
+            # Flask
+            - { name: FLASK_HOST, value: 0.0.0.0 }
+            - { name: FLASK_PORT, value: "8000" }
+            - { name: FLASK_DEBUG, value: "false" }
+            # Logging
+            - { name: LOG_LEVEL, value: INFO }
+          readinessProbe:
+            httpGet: { path: /health, port: 8000 }
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: { path: /health, port: 8000 }
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          resources:
+            requests: { cpu: 100m, memory: 128Mi }
+            limits: { cpu: "1", memory: 512Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: subscription-app
+  labels:
+    app: subscription-app
+spec:
+  type: ClusterIP
+  selector:
+    app: subscription-app
+  ports:
+    - { name: http, port: 8000, targetPort: 8000 }

@@ -1,0 +1,35 @@
+# Locust load generator that continuously drives the subscription app,
+# producing traffic (and telemetry) for the demo. No Service needed.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: load-generator
+  labels:
+    app: load-generator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: load-generator
+  template:
+    metadata:
+      labels:
+        app: load-generator
+    spec:
+      containers:
+        - name: load-generator
+          image: ghcr.io/clickhouse/clickstack-demo-subscription-app:26.4.0-load-generator
+          env:
+            - { name: LOCUST_WEB_PORT, value: "8081" }
+            - { name: LOCUST_USERS, value: "5" }
+            - { name: LOCUST_HOST, value: http://subscription-app:8000 }
+            - { name: LOCUST_HEADLESS, value: "true" }
+            - { name: LOCUST_AUTOSTART, value: "true" }
+            - { name: LOCUST_WEB_HOST, value: 0.0.0.0 }
+          # Deliberately no limits, matching docker-compose (which sets none for
+          # this service). Each of the LOCUST_USERS drives a real Chromium via
+          # locust-plugins' PlaywrightUser, so memory use is far higher than a
+          # plain HTTP load generator -- a 1Gi cap here got the pod OOMKilled in
+          # a restart loop. The request is just a scheduling hint.
+          resources:
+            requests: { cpu: 200m, memory: 512Mi }
