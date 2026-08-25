@@ -1,6 +1,6 @@
 services:
   clickstack:
-    image: clickhouse/clickstack-all-in-one:2.19.0
+    image: clickhouse/clickstack-all-in-one:2.36.0
     container_name: clickstack
     ports:
       - 8080:8080
@@ -18,7 +18,7 @@ services:
       start_period: 40s
 
   postgres-db:
-    image: postgres:18.3
+    image: postgres:18.6
     container_name: postgres-db
     volumes:
       - ./postgresql-db/init.sql:/docker-entrypoint-initdb.d/init.sql
@@ -34,7 +34,7 @@ services:
       start_period: 40s
 
   subscription-app:
-    image: ghcr.io/clickhouse/clickstack-demo-subscription-app:26.4.0-subscription-app
+    image: ghcr.io/clickhouse/clickstack-demo-subscription-app:26.9.0-subscription-app
     build: ./subscription-app
     container_name: subscription-app
     ports:
@@ -87,7 +87,7 @@ services:
         condition: service_healthy
 
   docs-loader:
-    image: ghcr.io/clickhouse/clickstack-demo-subscription-app:26.4.0-docs-loader
+    image: ghcr.io/clickhouse/clickstack-demo-subscription-app:26.9.0-docs-loader
     build: ./docs-loader
     container_name: docs-loader
     restart: unless-stopped
@@ -114,7 +114,7 @@ services:
         condition: service_healthy
 
   load-generator:
-    image: ghcr.io/clickhouse/clickstack-demo-subscription-app:26.4.0-load-generator
+    image: ghcr.io/clickhouse/clickstack-demo-subscription-app:26.9.0-load-generator
     build: ./load-generator
     container_name: load-generator
     restart: unless-stopped
@@ -130,7 +130,7 @@ services:
         condition: service_healthy
 
   socat:
-    image: alpine/socat:1.8.0.3
+    image: alpine/socat:1.8.1.3
     container_name: socat
     command: tcp-listen:2375,fork,reuseaddr unix-connect:/var/run/docker.sock
     user: root
@@ -146,7 +146,7 @@ services:
       start_period: 40s
 
   otel-collector:
-    image: ghcr.io/clickhouse/clickstack-demo-subscription-app:26.4.0-otel-collector
+    image: ghcr.io/clickhouse/clickstack-demo-subscription-app:26.9.0-otel-collector
     build: ./otel-collector
     container_name: otel-collector
     volumes:
