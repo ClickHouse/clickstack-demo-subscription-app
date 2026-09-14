@@ -1,6 +1,6 @@
 services:
   clickstack:
-    image: clickhouse/clickstack-all-in-one:2.36.0
+    image: clickhouse/clickstack-all-in-one:2.38.0
     container_name: clickstack
     ports:
       - 8080:8080

@@ -1,6 +1,6 @@
 services:
   clickstack:
-    image: clickhouse/clickstack-otel-collector:2.36.0
+    image: clickhouse/clickstack-otel-collector:2.38.0
     container_name: clickstack
     ports:
       - 4317:4317
