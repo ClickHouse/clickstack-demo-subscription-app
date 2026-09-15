@@ -3,6 +3,7 @@ k8s/secret.env
 **/.DS_Store
 clickhouse/**
 clickstack/**
+grafana/**
 postgresql-db/**
 !postgresql-db/init.sql
 subscription-app/logs/**
