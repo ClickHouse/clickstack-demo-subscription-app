@@ -32,7 +32,8 @@ spec:
             - { name: POSTGRES_USERNAME, value: postgres }
             - { name: POSTGRES_PASSWORD, value: changeme }
             - { name: POSTGRES_DATABASE, value: postgres }
-            # HyperDX / OTel
+            # OpenTelemetry (backend) and HyperDX browser SDK (frontend).
+            # HYPERDX_API_KEY must be declared before the var that interpolates it.
             - name: HYPERDX_API_KEY
               valueFrom:
                 secretKeyRef:
@@ -40,7 +41,8 @@ spec:
                   key: HYPERDX_API_KEY
             - { name: OTEL_SERVICE_NAME, value: subscription-backend }
             - { name: OTEL_EXPORTER_OTLP_ENDPOINT, value: http://clickstack:4318 }
-            - { name: HYPERDX_ENABLE_ADVANCED_NETWORK_CAPTURE, value: "1" }
+            - name: OTEL_EXPORTER_OTLP_HEADERS
+              value: authorization=$(HYPERDX_API_KEY)
             - { name: HYPERDX_SERVICE_NAME, value: subscription-frontend }
             - { name: HYPERDX_ENDPOINT, value: http://clickstack:4318 }
             # Docs loader

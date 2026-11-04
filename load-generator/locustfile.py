@@ -4,8 +4,10 @@ import ipaddress
 import logging
 import random
 
+import os
+
 from fake_useragent import UserAgent
-from locust import task
+from locust import HttpUser, constant_throughput, task
 from locust_plugins.users.playwright import PlaywrightUser, pw, PageWithRetry
 
 user_agent = UserAgent()
@@ -109,3 +111,17 @@ async def update_headers(route, request):
     }
     headers.update({'x-forwarded-for': get_random_public_ip(), 'user-agent': user_agent.random})
     await route.continue_(headers=headers)
+
+class DocsBurnUser(HttpUser):
+    """Clicks Docs on a schedule, crashing docs-loader and burning error budget.
+
+    Run it on its own (the docs-burn service), not alongside WebsiteBrowserUser.
+    Each user clicks DOCS_CLICKS_PER_MINUTE times a minute. A crash can take
+    many seconds to fail the request, so the click gives up after 2 seconds:
+    that keeps the rate as configured, and the backend still records the error.
+    """
+    wait_time = constant_throughput(float(os.getenv("DOCS_CLICKS_PER_MINUTE", "30")) / 60)
+
+    @task
+    def click_docs(self):
+        self.client.get("/load-docs", name="/load-docs", timeout=2)

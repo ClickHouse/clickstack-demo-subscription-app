@@ -1,11 +1,11 @@
 Flask==3.1.3
 psycopg2-binary==2.9.11
 
-# HyperDX OpenTelemetry instrumentation
-hyperdx-opentelemetry
+# OpenTelemetry: the upstream distro and the OTLP/HTTP exporter
+opentelemetry-distro
+opentelemetry-exporter-otlp-proto-http
 
-# Additional OpenTelemetry packages for comprehensive instrumentation
-opentelemetry-instrumentation[otlp]
+# Instrumentation for the libraries the app uses
 opentelemetry-instrumentation-flask
 opentelemetry-instrumentation-logging
 opentelemetry-instrumentation-psycopg2

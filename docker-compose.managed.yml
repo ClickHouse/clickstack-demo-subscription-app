@@ -1,0 +1,208 @@
+# The demo app sending to ClickHouse Observability (fully managed).
+#
+# There is no local gateway or ClickHouse here: ClickHouse runs those. The app's
+# SDKs and the browser send to the otel-collector service (your OTel agent),
+# which forwards to the managed endpoint. Copy the three OTEL_EXPORTER_OTLP_*
+# variables from ClickHouse Observability into .env, as in .env.managed.example.
+#
+#   docker compose -f docker-compose.managed.yml up -d
+#
+# Burn error budget by clicking Docs on a schedule, then stop it:
+#
+#   docker compose -f docker-compose.managed.yml up -d docs-burn
+#   docker compose -f docker-compose.managed.yml stop docs-burn
+
+# The 26.11.0 images are not published yet, so every app image is built locally
+# (pull_policy: build). Remove those lines once the images are on ghcr.io.
+
+x-app-version: &app-version
+  # Change APP_VERSION in .env to simulate a deploy: every span, log and metric
+  # from the app carries it as service.version.
+  OTEL_RESOURCE_ATTRIBUTES: service.version=${APP_VERSION:-1.0.0}
+
+services:
+  postgres-db:
+    image: postgres:18.6
+    container_name: postgres-db
+    volumes:
+      - ./postgresql-db/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./postgresql-db:/var/lib/postgresql
+    environment:
+      POSTGRES_DB: postgres
+      POSTGRES_PASSWORD: changeme
+    healthcheck:
+      test: ["CMD", "pg_isready"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  subscription-app:
+    image: ghcr.io/clickhouse/clickstack-demo-subscription-app:26.11.0-subscription-app
+    build: ./subscription-app
+    pull_policy: build
+    container_name: subscription-app
+    ports:
+      - 8000:8000
+    environment:
+      <<: *app-version
+      # PostgreSQL Configuration
+      POSTGRES_HOST: postgres-db
+      POSTGRES_PORT: 5432
+      POSTGRES_USERNAME: postgres
+      POSTGRES_PASSWORD: changeme
+      POSTGRES_DATABASE: postgres
+
+      # OpenTelemetry: the backend and the browser both send to the agent, which
+      # holds the ingestion key. The key below is a placeholder the browser SDK expects.
+      HYPERDX_API_KEY: sent-by-agent
+      OTEL_SERVICE_NAME: subscription-backend
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+      HYPERDX_SERVICE_NAME: subscription-frontend
+      # Used when the page is not opened on localhost: Locust's browsers open
+      # http://subscription-app:8000. On localhost the page sends to localhost:4318.
+      HYPERDX_ENDPOINT: http://otel-collector:4318
+
+      # Simulated bad deploy, off by default: slower signups, a share of them
+      # failing, and a new warning log line. See check_duplicate_subscriber().
+      FAULT_LATENCY_MS: ${FAULT_LATENCY_MS:-0}
+      FAULT_ERROR_RATE: ${FAULT_ERROR_RATE:-0}
+
+      # Docs loader
+      DOCS_LOADER_HOST: docs-loader
+      DOCS_LOADER_PORT: 8001
+
+      # Flask Application Configuration
+      FLASK_HOST: 0.0.0.0
+      FLASK_PORT: 8000
+      FLASK_DEBUG: "false"
+
+      # Logging Configuration
+      LOG_LEVEL: INFO
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/health')"]
+      interval: 1s
+      timeout: 1s
+      retries: 3
+      start_period: 40s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    depends_on:
+      postgres-db:
+        condition: service_healthy
+      docs-loader:
+        condition: service_healthy
+      otel-collector:
+        condition: service_healthy
+
+  docs-loader:
+    image: ghcr.io/clickhouse/clickstack-demo-subscription-app:26.11.0-docs-loader
+    build: ./docs-loader
+    pull_policy: build
+    container_name: docs-loader
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 10M
+    ports:
+      - 8001:8001
+    environment:
+      <<: *app-version
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+      OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
+      OTEL_EXPORTER_OTLP_INSECURE: "true"
+      OTEL_SERVICE_NAME: docs-loader
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8001"]
+      interval: 1s
+      timeout: 1s
+      retries: 3
+      start_period: 40s
+    depends_on:
+      otel-collector:
+        condition: service_healthy
+
+  load-generator:
+    image: ghcr.io/clickhouse/clickstack-demo-subscription-app:26.11.0-load-generator
+    build: ./load-generator
+    pull_policy: build
+    container_name: load-generator
+    restart: unless-stopped
+    command: ["WebsiteBrowserUser"]
+    environment:
+      LOCUST_WEB_PORT: 8081
+      # One browser keeps live traffic level with the history (history.py --scale 0.2).
+      LOCUST_USERS: ${LOCUST_USERS:-1}
+      LOCUST_HOST: http://subscription-app:8000
+      LOCUST_HEADLESS: "true"
+      LOCUST_AUTOSTART: "true"
+      LOCUST_WEB_HOST: 0.0.0.0
+    depends_on:
+      subscription-app:
+        condition: service_healthy
+
+  docs-burn:
+    # Not started by `up`; start and stop it by name.
+    profiles: ["burn"]
+    image: ghcr.io/clickhouse/clickstack-demo-subscription-app:26.11.0-load-generator
+    build: ./load-generator
+    pull_policy: build
+    container_name: docs-burn
+    command: ["DocsBurnUser"]
+    environment:
+      LOCUST_USERS: ${DOCS_BURN_USERS:-1}
+      LOCUST_HOST: http://subscription-app:8000
+      LOCUST_HEADLESS: "true"
+      DOCS_CLICKS_PER_MINUTE: ${DOCS_CLICKS_PER_MINUTE:-30}
+    depends_on:
+      subscription-app:
+        condition: service_healthy
+
+  socat:
+    image: alpine/socat:1.8.1.3
+    container_name: socat
+    command: tcp-listen:2375,fork,reuseaddr unix-connect:/var/run/docker.sock
+    user: root
+    volumes:
+      - type: bind
+        source: /var/run/docker.sock
+        target: /var/run/docker.sock
+    healthcheck:
+      test: ["CMD", "socat", "/dev/null", "tcp:localhost:2375"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  otel-collector:
+    image: ghcr.io/clickhouse/clickstack-demo-subscription-app:26.11.0-otel-collector
+    build: ./otel-collector
+    pull_policy: build
+    container_name: otel-collector
+    ports:
+      # Only for the browser SDK on http://localhost:8000.
+      - 127.0.0.1:4318:4318
+    volumes:
+      - ./otel-collector/otel-collector-config.managed.yaml:/etc/otelcol-contrib/config.yaml
+    environment:
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:?Copy OTEL_EXPORTER_OTLP_ENDPOINT from ClickHouse Observability into .env}
+      OTEL_EXPORTER_OTLP_HEADERS: ${OTEL_EXPORTER_OTLP_HEADERS:?Copy OTEL_EXPORTER_OTLP_HEADERS from ClickHouse Observability into .env}
+    healthcheck:
+      test: ["CMD", "./healthcheck"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    depends_on:
+      socat:
+        condition: service_healthy
+
+networks:
+  default:
+    name: clickstack-demo
+    driver: bridge

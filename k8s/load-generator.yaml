@@ -19,6 +19,7 @@ spec:
       containers:
         - name: load-generator
           image: ghcr.io/clickhouse/clickstack-demo-subscription-app:26.4.0-load-generator
+          args: ["WebsiteBrowserUser"] # newer images also hold DocsBurnUser, which must not run here
           env:
             - { name: LOCUST_WEB_PORT, value: "8081" }
             - { name: LOCUST_USERS, value: "5" }

@@ -1,0 +1,57 @@
+# OTel agent for ClickHouse Observability (fully managed).
+#
+# The app's SDKs and the browser send OTLP here; the agent adds container
+# metrics from docker_stats and forwards everything to the managed gateway.
+# OTLP_ENDPOINT and OTLP_AUTHORIZATION are derived by entrypoint.sh from the
+# standard OTEL_EXPORTER_OTLP_ENDPOINT and OTEL_EXPORTER_OTLP_HEADERS variables.
+
+extensions:
+  health_check:
+    endpoint: 0.0.0.0:13133
+
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+        cors:
+          # The browser SDK on the app's page sends sessions and traces here.
+          allowed_origins:
+            - http://localhost:8000
+            - http://127.0.0.1:8000
+            # Locust's browsers open the app by its container name.
+            - http://subscription-app:8000
+          allowed_headers:
+            - "*"
+  docker_stats:
+    endpoint: tcp://socat:2375
+    collection_interval: 15s
+
+processors:
+  batch:
+
+exporters:
+  otlphttp/managed:
+    endpoint: ${env:OTLP_ENDPOINT}
+    headers:
+      authorization: ${env:OTLP_AUTHORIZATION}
+  debug:
+    verbosity: basic
+
+service:
+  extensions: [health_check]
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [otlphttp/managed]
+    metrics:
+      receivers: [otlp, docker_stats]
+      processors: [batch]
+      exporters: [otlphttp/managed]
+    logs:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [otlphttp/managed]

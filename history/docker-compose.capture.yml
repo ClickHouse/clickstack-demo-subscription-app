@@ -1,0 +1,13 @@
+# Overlay on docker-compose.managed.yml that records telemetry to history/capture/
+# instead of sending it:
+#
+#   docker compose -f docker-compose.managed.yml -f history/docker-compose.capture.yml up -d
+services:
+  otel-collector:
+    volumes:
+      - ./history/otel-collector-config.capture.yaml:/etc/otelcol-contrib/config.yaml
+      - ${CAPTURE_DIR:-./history/capture}:/capture
+    environment:
+      # Nothing is sent, so the managed endpoint isn't needed.
+      OTEL_EXPORTER_OTLP_ENDPOINT: unused
+      OTEL_EXPORTER_OTLP_HEADERS: unused

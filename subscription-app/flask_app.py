@@ -3,16 +3,20 @@ import psycopg2
 import logging
 from datetime import datetime
 import os
+import random
+import time
 import requests
+from opentelemetry import trace
 
 app = Flask(__name__, template_folder='templates', static_folder='static')
+tracer = trace.get_tracer(__name__)
 
 # Configure logging
 logging.getLogger('werkzeug').disabled = True
 log_level = os.getenv('LOG_LEVEL', 'INFO').upper()      # get log_level as string
 log_level = getattr(logging, log_level, 'INFO')         # convert log_level to numeric
 logger = logging.getLogger(__name__)
-# Set logger level to ensure HyperDX captures logs properly
+# Set logger level to ensure OpenTelemetry captures logs properly
 logger.setLevel(log_level)
 
 logger.debug("Loading configuration variables")
@@ -24,11 +28,10 @@ try:
     POSTGRES_PASSWORD = os.getenv('POSTGRES_PASSWORD', '')
     POSTGRES_DATABASE = os.getenv('POSTGRES_DATABASE', 'postgres')
 
-    # HyperDX configuration
+    # Browser SDK (HyperDX) configuration; the backend uses the standard OTEL_* variables
     HYPERDX_API_KEY = os.getenv('HYPERDX_API_KEY', '')
     OTEL_SERVICE_NAME = os.getenv('OTEL_SERVICE_NAME', 'subscription-backend')
     OTEL_EXPORTER_OTLP_ENDPOINT = os.getenv('OTEL_EXPORTER_OTLP_ENDPOINT', 'http://localhost:4318')
-    HYPERDX_ENABLE_ADVANCED_NETWORK_CAPTURE = int(os.getenv('HYPERDX_ENABLE_ADVANCED_NETWORK_CAPTURE', '1'))
     HYPERDX_SERVICE_NAME = os.getenv('HYPERDX_SERVICE_NAME', 'subscription-frontend')
     HYPERDX_ENDPOINT = os.getenv('HYPERDX_ENDPOINT', 'http://localhost:4318')
 
@@ -38,8 +41,25 @@ try:
     FLASK_DEBUG = os.getenv('FLASK_DEBUG', 'False').lower() in ('true', '1', 'yes', 'on')
     DOCS_LOADER_HOST = os.getenv('DOCS_LOADER_HOST', 'localhost')
     DOCS_LOADER_PORT = int(os.getenv('DOCS_LOADER_PORT', '8001'))
+
+    # Simulated bad deploy, off by default. A duplicate-subscriber check on every
+    # signup adds FAULT_LATENCY_MS (give or take half), and fails a FAULT_ERROR_RATE
+    # fraction of signups with a timeout.
+    FAULT_LATENCY_MS = int(os.getenv('FAULT_LATENCY_MS', '0'))
+    FAULT_ERROR_RATE = float(os.getenv('FAULT_ERROR_RATE', '0'))
 except Exception as e:
     logger.error(f"Failed to load configuration variables: {e}")
+
+def check_duplicate_subscriber(email):
+    """Look for an existing subscriber with the same email (simulated bad deploy)"""
+    if FAULT_LATENCY_MS <= 0 and FAULT_ERROR_RATE <= 0:
+        return
+    with tracer.start_as_current_span("check_duplicate_subscriber"):
+        elapsed_ms = int(FAULT_LATENCY_MS * random.uniform(0.5, 1.5))
+        time.sleep(elapsed_ms / 1000)
+        if random.random() < FAULT_ERROR_RATE:
+            raise TimeoutError(f"Duplicate subscriber check timed out after {elapsed_ms} ms")
+        logger.warning(f"Duplicate subscriber check scanned the users table in {elapsed_ms} ms")
 
 def get_psql_connection():
     """Get PostgreSQL client connection"""
@@ -100,6 +120,8 @@ def subscribe():
                     'success': False,
                     'error': f'Missing required field: {field}'
                 }), 400
+
+        check_duplicate_subscriber(data.get('email', '').strip().lower())
 
         logger.debug("Connecting to PostgreSQL")
         conn = get_psql_connection()
