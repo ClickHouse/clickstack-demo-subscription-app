@@ -32,7 +32,7 @@ spec:
             - { name: POSTGRES_USERNAME, value: postgres }
             - { name: POSTGRES_PASSWORD, value: changeme }
             - { name: POSTGRES_DATABASE, value: postgres }
-            # OpenTelemetry (backend) and HyperDX browser SDK (frontend).
+            # OpenTelemetry (backend) and ClickStack browser SDK (frontend).
             # HYPERDX_API_KEY must be declared before the var that interpolates it.
             - name: HYPERDX_API_KEY
               valueFrom:

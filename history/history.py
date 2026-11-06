@@ -53,7 +53,7 @@ ROOT_CLASS = {
     "GET /css/<path:filename>": "css",
     "GET /load-docs": "docs_err",
 }
-# docs-loader's health check: "/" from the HyperDX SDK, "GET /" from upstream otelhttp
+# docs-loader's health check: "/" in recordings made before the port to OpenTelemetry, "GET /" from otelhttp
 DOCS_HEALTH_NAMES = ("/", "GET /")
 ACCESS_LOG_TIME = re.compile(r"\[\d{4}-\d\d-\d\d \d\d:\d\d:\d\d\.\d+\]")
 RESTART_BODY = "** Service Started on Port"

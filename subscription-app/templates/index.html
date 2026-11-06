@@ -162,7 +162,7 @@
 
     <script src="//www.unpkg.com/@hyperdx/browser@0.22.0/build/index.js"></script>
     <script>
-        // HyperDX Configuration from server
+        // Browser SDK configuration from the server
         const hyperdxConfig = {{ hyperdx_config | tojson | safe}};
         window.HyperDX.init({
             apiKey: hyperdxConfig.api_key,
@@ -238,7 +238,7 @@
                     successMessage.style.display = 'block';
                     form.reset(); // Clear the form
                     
-                    // Track successful submission with HyperDX TBD
+                    // Track successful submission with the browser SDK (TBD)
                     // if (window.HyperDX) {
                     //     window.HyperDX.addUserAction('form_submit_success', {
                     //         email: formData.email,
@@ -250,7 +250,7 @@
                     errorMessage.textContent = result.error || 'An unexpected error occurred.';
                     errorMessage.style.display = 'block';
                     
-                    // Track error with HyperDX TBD
+                    // Track error with the browser SDK (TBD)
                     // if (window.HyperDX) {
                     //     window.HyperDX.addUserAction('form_submit_error', {
                     //         error: result.error
@@ -262,7 +262,7 @@
                 errorMessage.textContent = 'Network error. Please check your connection and try again.';
                 errorMessage.style.display = 'none';
                 
-                // Track network error with HyperDX TBD
+                // Track network error with the browser SDK (TBD)
                 // if (window.HyperDX) {
                 //     window.HyperDX.addUserAction('form_submit_network_error', {
                 //         error: error.message

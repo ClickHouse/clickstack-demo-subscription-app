@@ -90,7 +90,7 @@ class WebsiteBrowserUser(PlaywrightUser):
             target_element = page.get_by_label("Full Name")
             await target_element.hover()
             await page.wait_for_timeout(get_sleep_duration())
-            await target_element.fill("HyperDX Demo")
+            await target_element.fill("ClickStack Demo")
             target_element = page.get_by_label("Company")
             await target_element.fill("ClickHouse")
             await page.wait_for_timeout(get_sleep_duration())

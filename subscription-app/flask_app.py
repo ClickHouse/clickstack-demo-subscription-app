@@ -28,7 +28,7 @@ try:
     POSTGRES_PASSWORD = os.getenv('POSTGRES_PASSWORD', '')
     POSTGRES_DATABASE = os.getenv('POSTGRES_DATABASE', 'postgres')
 
-    # Browser SDK (HyperDX) configuration; the backend uses the standard OTEL_* variables
+    # ClickStack browser SDK configuration; the backend uses the standard OTEL_* variables
     HYPERDX_API_KEY = os.getenv('HYPERDX_API_KEY', '')
     OTEL_SERVICE_NAME = os.getenv('OTEL_SERVICE_NAME', 'subscription-backend')
     OTEL_EXPORTER_OTLP_ENDPOINT = os.getenv('OTEL_EXPORTER_OTLP_ENDPOINT', 'http://localhost:4318')

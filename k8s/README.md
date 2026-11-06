@@ -58,7 +58,7 @@ Everything runs in the `clickstack-demo` namespace.
 
 5. **Edit secret.env with the connection information to your service**
 
-6. **Edit secret.env with your own HyperDX API key to securely ingest data**
+6. **Edit secret.env with your own ClickStack ingestion API key to securely ingest data**
 
 7. **Start all services**
    ```bash

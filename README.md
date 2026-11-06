@@ -1,11 +1,11 @@
 # ClickHouse Subscription Demo App
 
-A Flask-based web application that showcases ClickHouse features while collecting user subscriptions. The backend (Python) and the docs loader (Go) are instrumented with the upstream OpenTelemetry SDKs, and the browser with the HyperDX browser SDK.
+A Flask-based web application that showcases ClickHouse features while collecting user subscriptions. The backend (Python) and the docs loader (Go) are instrumented with the upstream OpenTelemetry SDKs, and the browser with the ClickStack browser SDK (`@hyperdx/browser`).
 
 ## Overview
 
 This project demonstrates ClickStack Observability through full OpenTelemetry instrumentation for monitoring and debugging, both in front-end (browser) and back-end (Python and Go).
-After the data is sent from the OpenTelemetry collector to ClickHouse, it is possible to use HyperDX to visualize data and get insights.
+After the data is sent from the OpenTelemetry collector to ClickHouse, it is possible to use ClickStack UI to visualize data and get insights.
 
 ## Architecture
 ![Architecture](architecture.png "Architecture")
@@ -36,7 +36,7 @@ After the data is sent from the OpenTelemetry collector to ClickHouse, it is pos
 
 5. **Edit .env with the connection information to your service**
 
-6. **Edit .env with your own HyperDX API key to securely ingest data**
+6. **Edit .env with your own ClickStack ingestion API key to securely ingest data**
 
 7. **Start all services**
    ```bash
