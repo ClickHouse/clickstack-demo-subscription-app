@@ -18,10 +18,10 @@ What it plants, relative to now:
 
 | Incident | Default | What it looks like |
 | --- | --- | --- |
-| Docs-crash burn | 9 days ago, 10:20 UTC, 40 minutes | `GET /load-docs` fails and `docs-loader` restarts; exactly 40% of the error budget |
-| Bad deploy | 2.0.0, 2 days ago, 13:05 UTC, 5 hours, then back to 1.0.0 | Signups slow down, a share of them time out, and a new warning appears; exactly 30% of the error budget |
+| Docs-crash burn | the Saturday a week before the deploy, 10:20 UTC, 40 minutes | `GET /load-docs` fails and `docs-loader` restarts; exactly 40% of the error budget |
+| Bad deploy | 2.0.0, the latest Saturday at least 2 days ago, 13:05 UTC, 5 hours, then back to 1.0.0 | Signups slow down, a share of them time out, and a new warning appears; exactly 30% of the error budget |
 
-The budget is for a 99.9% SLO over user requests: every `subscription-backend` server span except `GET /health`. User traffic follows a daily cycle and halves at weekends; health checks don't. Every option is in `history.py generate --help`.
+The budget is for a 99.9% SLO over user requests: every `subscription-backend` server span except `GET /health`. User traffic follows a daily cycle and halves at weekends; health checks don't. Both incidents fall on a Saturday whichever day you load, so every learner sees the same weekend traffic around them. Every option is in `history.py generate --help`.
 
 ## Re-record it
 

@@ -12,9 +12,11 @@ Each recorded backend request (its spans and logs) becomes a template. Generatin
 replays copies of the templates minute by minute across the history window, with
 fresh IDs and timestamps relative to now, so it must run again before each delivery.
 
-What it plants, relative to now:
-  * a Docs-crash burn (default 9 days ago, 40 minutes), and
-  * a bad deploy of 2.0.0 (default 2 days ago, 5 hours), then a rollback to 1.0.0.
+What it plants, relative to now, always on a Saturday so every learner sees the
+same weekend traffic whichever day they load:
+  * a bad deploy of 2.0.0 on the latest Saturday at least 2 days ago (5 hours),
+    then a rollback to 1.0.0, and
+  * a Docs-crash burn on the Saturday a week before it (40 minutes).
 Both are sized as shares of the 28-day error budget of a 99.9% SLO over user
 requests: every backend server span except GET /health.
 
@@ -232,9 +234,13 @@ class Plan:
         self.now = (dt.datetime.fromisoformat(args.now) if args.now
                     else dt.datetime.now(dt.timezone.utc)).replace(second=0, microsecond=0)
         self.start = self.now - dt.timedelta(days=args.days)
-        self.burn_start = at_time_of_day(self.now - dt.timedelta(days=args.burn_days_ago), args.burn_at)
+        # Incidents always fall on the same weekday (Saturday by default), so the shares a
+        # learner reads don't depend on the day they load: traffic halves at weekends.
+        deploy_day = self.now - dt.timedelta(days=args.deploy_days_ago)
+        deploy_day -= dt.timedelta(days=(deploy_day.weekday() - args.incident_weekday) % 7)
+        self.deploy_start = at_time_of_day(deploy_day, args.deploy_at)
+        self.burn_start = at_time_of_day(deploy_day - dt.timedelta(weeks=args.burn_weeks_before), args.burn_at)
         self.burn_end = self.burn_start + dt.timedelta(minutes=args.burn_minutes)
-        self.deploy_start = at_time_of_day(self.now - dt.timedelta(days=args.deploy_days_ago), args.deploy_at)
         self.deploy_end = self.deploy_start + dt.timedelta(minutes=args.deploy_minutes)
         self._size()
 
@@ -533,11 +539,15 @@ def main():
                    help="traffic relative to the recording (5 Locust users); the default 0.2 "
                         "matches docker-compose.managed.yml's single Locust user")
     g.add_argument("--slo", type=float, default=0.999)
-    g.add_argument("--burn-days-ago", type=int, default=9)
+    g.add_argument("--burn-weeks-before", type=int, default=1,
+                   help="weeks before the deploy that the Docs burn happens")
     g.add_argument("--burn-at", default="10:20", help="UTC time of day the burn starts")
     g.add_argument("--burn-minutes", type=int, default=40)
     g.add_argument("--burn-budget-share", type=float, default=0.4)
-    g.add_argument("--deploy-days-ago", type=int, default=2)
+    g.add_argument("--deploy-days-ago", type=int, default=2,
+                   help="the deploy is on the latest incident weekday at least this many days ago")
+    g.add_argument("--incident-weekday", type=int, default=5,
+                   help="weekday both incidents fall on, Monday=0 (default 5, Saturday)")
     g.add_argument("--deploy-at", default="13:05", help="UTC time of day 2.0.0 is deployed")
     g.add_argument("--deploy-minutes", type=int, default=300)
     g.add_argument("--deploy-budget-share", type=float, default=0.3)
