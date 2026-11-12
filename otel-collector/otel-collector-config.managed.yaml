@@ -29,14 +29,16 @@ receivers:
     endpoint: tcp://socat:2375
     collection_interval: 15s
 
-processors:
-  batch:
-
 exporters:
-  otlphttp/managed:
+  otlp_http/managed:
     endpoint: ${env:OTLP_ENDPOINT}
     headers:
       authorization: ${env:OTLP_AUTHORIZATION}
+    # The exporter's sending queue groups telemetry into batches before it is
+    # sent. This replaces the batch processor, which is deprecated.
+    sending_queue:
+      enabled: true
+      batch: {}
   debug:
     verbosity: basic
 
@@ -45,13 +47,10 @@ service:
   pipelines:
     traces:
       receivers: [otlp]
-      processors: [batch]
-      exporters: [otlphttp/managed]
+      exporters: [otlp_http/managed]
     metrics:
       receivers: [otlp, docker_stats]
-      processors: [batch]
-      exporters: [otlphttp/managed]
+      exporters: [otlp_http/managed]
     logs:
       receivers: [otlp]
-      processors: [batch]
-      exporters: [otlphttp/managed]
+      exporters: [otlp_http/managed]

@@ -88,25 +88,27 @@ data:
         collection_interval: 15s
 
     exporters:
-      otlp/hdx:
+      otlp_grpc/hdx:
         endpoint: 'clickstack:4317'
         headers:
           authorization: ${env:HYPERDX_API_KEY}
         tls:
           insecure: true
+        # Batching happens in the exporter's sending queue (the batch
+        # processor is deprecated). Needs collector 0.144.0 or later, which the
+        # 26.11.0 agent image has (pinned to 0.165.0 in its Dockerfile).
+        sending_queue:
+          enabled: true
+          batch: {}
       debug:
         verbosity: basic
-
-    processors:
-      batch:
 
     service:
       extensions: [health_check]
       pipelines:
         metrics:
           receivers: [kubeletstats, k8s_cluster]
-          processors: [batch]
-          exporters: [otlp/hdx]
+          exporters: [otlp_grpc/hdx]
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -127,7 +129,7 @@ spec:
       serviceAccountName: otel-collector
       containers:
         - name: otel-collector
-          image: ghcr.io/clickhouse/clickstack-demo-subscription-app:26.4.0-otel-collector
+          image: ghcr.io/clickhouse/clickstack-demo-subscription-app:26.11.0-otel-collector
           ports:
             - { name: health, containerPort: 13133 }
           env:

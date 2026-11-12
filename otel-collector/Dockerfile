@@ -8,7 +8,10 @@ COPY ./healthcheck.go healthcheck.go
 
 RUN CGO_ENABLED=0 GOOS=linux go build -ldflags "-s -w" -o healthcheck healthcheck.go
 
-FROM otel/opentelemetry-collector-contrib:latest AS otelcol
+# Pinned. The agent configs batch in the exporter (sending_queue.batch) and use
+# the otlp_http / otlp_grpc exporter names, which need 0.144.0 or later. The
+# batch processor is deprecated and is removed in 0.177.0.
+FROM otel/opentelemetry-collector-contrib:0.165.0 AS otelcol
 
 # The contrib image has no shell, and entrypoint.sh needs one to read the
 # standard OTEL_EXPORTER_OTLP_* variables, so the binary moves onto Alpine.

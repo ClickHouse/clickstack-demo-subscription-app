@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: docs-loader
-          image: ghcr.io/clickhouse/clickstack-demo-subscription-app:26.4.0-docs-loader
+          image: ghcr.io/clickhouse/clickstack-demo-subscription-app:26.11.0-docs-loader
           ports:
             - { name: http, containerPort: 8001 }
           env:

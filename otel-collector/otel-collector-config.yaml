@@ -8,22 +8,23 @@ receivers:
     collection_interval: 15s
 
 exporters:
-  otlp/hdx:
+  otlp_grpc/hdx:
     endpoint: 'clickstack:4317'
     headers:
       authorization: ${env:HYPERDX_API_KEY}
     tls:
       insecure: true
+    # Batching happens in the exporter's sending queue (the batch processor
+    # is deprecated).
+    sending_queue:
+      enabled: true
+      batch: {}
   debug:
     verbosity: basic
-
-processors:
-  batch:
 
 service:
   extensions: [health_check]
   pipelines:
     metrics:
       receivers: [docker_stats]
-      processors: [batch]
-      exporters: [otlp/hdx]
+      exporters: [otlp_grpc/hdx]

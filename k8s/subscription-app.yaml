@@ -22,7 +22,7 @@ spec:
     spec:
       containers:
         - name: subscription-app
-          image: ghcr.io/clickhouse/clickstack-demo-subscription-app:26.4.0-subscription-app
+          image: ghcr.io/clickhouse/clickstack-demo-subscription-app:26.11.0-subscription-app
           ports:
             - { name: http, containerPort: 8000 }
           env:
