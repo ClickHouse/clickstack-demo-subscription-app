@@ -1,12 +1,12 @@
 # Infra metrics collector. In docker-compose this scraped the Docker socket
 # (via socat) with the docker_stats receiver. Kubernetes has no Docker
-# socket, so we use the K8s-native kubeletstats + k8s_cluster receivers
+# socket, so we use the K8s-native kubelet_stats + k8s_cluster receivers
 # instead. Both ship in the otel-collector-contrib distro this image is
 # built from.
 #
-# NOTE: kubeletstats here scrapes only the node this pod runs on. That's
+# NOTE: kubelet_stats here scrapes only the node this pod runs on. That's
 # fine for a single-node demo cluster (kind/minikube/Docker Desktop). For a
-# multi-node cluster, split this into a DaemonSet (kubeletstats, one per
+# multi-node cluster, split this into a DaemonSet (kubelet_stats, one per
 # node) plus a single-replica Deployment (k8s_cluster).
 apiVersion: v1
 kind: ServiceAccount
@@ -75,7 +75,7 @@ data:
         endpoint: 0.0.0.0:13133
 
     receivers:
-      kubeletstats:
+      kubelet_stats:
         collection_interval: 15s
         auth_type: serviceAccount
         endpoint: https://${env:K8S_NODE_NAME}:10250
@@ -107,7 +107,7 @@ data:
       extensions: [health_check]
       pipelines:
         metrics:
-          receivers: [kubeletstats, k8s_cluster]
+          receivers: [kubelet_stats, k8s_cluster]
           exporters: [otlp_grpc/hdx]
 ---
 apiVersion: apps/v1

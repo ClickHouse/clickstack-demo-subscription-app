@@ -40,12 +40,22 @@ spec:
             httpGet: { path: /, port: 8001 }
             initialDelaySeconds: 5
             periodSeconds: 10
-          # The tight memory limit is deliberate and matches docker-compose:
-          # GET /load grows memory in the request handler and never responds,
-          # so the container gets OOM-killed. That OOM *is* the demo.
+          # GET /load grows memory in the request handler and never responds.
+          # That crash *is* the demo. Under docker-compose the container is
+          # OOM-killed at its 10M limit (Docker Desktop also gives it swap).
+          # Kubernetes has no swap: at 10M the pod is OOM-killed while it
+          # starts. At 20Mi it starts, but the handler allocates memory it
+          # never writes, so after a Docs click the pod either gets OOM-killed
+          # or just stalls. The liveness probe restarts it if it stalls.
+          # Either way it restarts about a minute and a half after the click.
+          livenessProbe:
+            httpGet: { path: /, port: 8001 }
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            failureThreshold: 3
           resources:
-            requests: { cpu: 10m, memory: 10M }
-            limits: { cpu: 200m, memory: 10M }
+            requests: { cpu: 10m, memory: 20Mi }
+            limits: { cpu: 200m, memory: 20Mi }
 ---
 apiVersion: v1
 kind: Service

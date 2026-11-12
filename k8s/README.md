@@ -15,14 +15,14 @@ Everything runs in the `clickstack-demo` namespace.
 | `subscription-app.yaml` | Flask app Deployment + ClusterIP Service (`8000`) |
 | `docs-loader.yaml` | Go docs-loader Deployment + Service |
 | `load-generator.yaml` | Locust load generator Deployment |
-| `otel-collector.yaml` | Infra-metrics collector (kubeletstats + k8s_cluster) with ServiceAccount + RBAC |
+| `otel-collector.yaml` | Infra-metrics collector (kubelet_stats + k8s_cluster) with ServiceAccount + RBAC |
 | `kustomization.yaml` | Ties it together + generates the `clickstack-secrets` Secret |
 
 ### Differences from docker-compose
 
 - **Infra metrics:** docker-compose used `socat` + the `docker_stats`
   receiver to read the Docker socket. Kubernetes has no Docker socket, so the
-  `otel-collector` here uses the K8s-native **`kubeletstats`** and
+  `otel-collector` here uses the K8s-native **`kubelet_stats`** and
   **`k8s_cluster`** receivers instead (with a ServiceAccount + ClusterRole).
   The `socat` service is gone.
 - The subscription app is reached via `kubectl port-forward` rather than a
