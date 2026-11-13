@@ -163,6 +163,21 @@ services:
       subscription-app:
         condition: service_healthy
 
+  history:
+    # Loads 28 days of this app's history into your service (Lab 1.2). Not
+    # started by `up`; run it once:
+    #   docker compose -f docker-compose.managed.yml run --rm history
+    # It reuses the subscription-app image for Python, so the host needs only
+    # Docker. history.py reads OTEL_EXPORTER_OTLP_* from the mounted .env.
+    profiles: ["history"]
+    image: ghcr.io/clickhouse/clickstack-demo-subscription-app:26.11.0-subscription-app
+    build: ./subscription-app
+    pull_policy: build
+    volumes:
+      - ./history:/history:ro
+      - ./.env:/.env:ro
+    command: ["python", "/history/history.py", "generate", "--send"]
+
   socat:
     image: alpine/socat:1.8.1.3
     container_name: socat

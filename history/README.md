@@ -7,12 +7,12 @@ Weeks of telemetry from this app, with incidents planted, for labs that need mor
 Run it again before each delivery: timestamps are relative to the moment you run it.
 
 ```bash
-python3 history/history.py generate --send
+docker compose -f docker-compose.managed.yml run --rm history
 ```
 
-It reads `OTEL_EXPORTER_OTLP_ENDPOINT` and `OTEL_EXPORTER_OTLP_HEADERS` from the shell, or from the app's `.env` when they aren't set there.
+The `history` service runs the script in the `subscription-app` image, so the host needs only Docker. It reads `OTEL_EXPORTER_OTLP_ENDPOINT` and `OTEL_EXPORTER_OTLP_HEADERS` from the app's `.env`, which the service mounts. With Python 3 on the host, `python3 history/history.py generate --send` does the same; it reads the variables from the shell, or from `.env` when they aren't set there.
 
-Check the plan without sending anything with `--dry-run`, or write OTLP JSON files with `--out DIR`. At the default `--scale 0.2`, which matches the single Locust user in `docker-compose.managed.yml`, it loads about 1.7 million spans and 1.5 million logs, roughly 3 GB of uncompressed JSON. That took about 3 minutes in testing; if the endpoint throttles, the script retries and reports how often.
+Check the plan without sending anything with `--dry-run`, or write OTLP JSON files with `--out DIR`. In the container, pass the whole command, for example `docker compose -f docker-compose.managed.yml run --rm history python /history/history.py generate --dry-run`. At the default `--scale 0.2`, which matches the single Locust user in `docker-compose.managed.yml`, it loads about 1.7 million spans and 1.5 million logs, roughly 3 GB of uncompressed JSON. That took about 3 minutes in testing; if the endpoint throttles, the script retries and reports how often.
 
 What it plants, relative to now:
 
