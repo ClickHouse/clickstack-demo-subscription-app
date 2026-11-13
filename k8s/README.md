@@ -33,6 +33,30 @@ Everything runs in the `clickstack-demo` namespace.
   `--load-restrictor LoadRestrictionsNone` onto every command. It's the same
   four keys, so `cp ../.env secret.env` works if you already ran compose.
 
+## Before you start: the images
+
+The manifests pull the app images from `ghcr.io`, and those are published for
+`linux/arm64` only. On an x86_64 (`amd64`) machine they fail with
+`exec format error`, so build them yourself first, from the repo root. Building
+them ahead of time also saves the wait on the day:
+
+```bash
+for s in subscription-app docs-loader load-generator otel-collector; do
+  docker build -t ghcr.io/clickhouse/clickstack-demo-subscription-app:26.11.0-$s ./$s
+done
+```
+
+The tags match the manifests, and Kubernetes uses an image that is already on
+the node instead of pulling it. For a local cluster such as kind or minikube,
+copy them into the cluster:
+
+```bash
+for s in subscription-app docs-loader load-generator otel-collector; do
+  kind load docker-image ghcr.io/clickhouse/clickstack-demo-subscription-app:26.11.0-$s
+  # minikube: minikube image load ghcr.io/clickhouse/clickstack-demo-subscription-app:26.11.0-$s
+done
+```
+
 ## Quick Start
 
 1. **Create a ClickHouse Cloud service**
