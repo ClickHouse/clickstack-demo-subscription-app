@@ -12,8 +12,8 @@
 #   docker compose -f docker-compose.managed.yml up -d docs-burn
 #   docker compose -f docker-compose.managed.yml stop docs-burn
 
-# The 26.11.0 images are not published yet, so every app image is built locally
-# (pull_policy: build). Remove those lines once the images are on ghcr.io.
+# The published images are linux/arm64 only, so every app image is built
+# locally (pull_policy: build), which works on any machine.
 
 x-app-version: &app-version
   # Change APP_VERSION in .env to simulate a deploy: every span, log and metric
