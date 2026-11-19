@@ -1,12 +1,12 @@
 # Infra metrics collector. In docker-compose this scraped the Docker socket
 # (via socat) with the docker_stats receiver. Kubernetes has no Docker
-# socket, so we use the K8s-native kubeletstats + k8s_cluster receivers
+# socket, so we use the K8s-native kubelet_stats + k8s_cluster receivers
 # instead. Both ship in the otel-collector-contrib distro this image is
 # built from.
 #
-# NOTE: kubeletstats here scrapes only the node this pod runs on. That's
+# NOTE: kubelet_stats here scrapes only the node this pod runs on. That's
 # fine for a single-node demo cluster (kind/minikube/Docker Desktop). For a
-# multi-node cluster, split this into a DaemonSet (kubeletstats, one per
+# multi-node cluster, split this into a DaemonSet (kubelet_stats, one per
 # node) plus a single-replica Deployment (k8s_cluster).
 apiVersion: v1
 kind: ServiceAccount
@@ -75,7 +75,7 @@ data:
         endpoint: 0.0.0.0:13133
 
     receivers:
-      kubeletstats:
+      kubelet_stats:
         collection_interval: 15s
         auth_type: serviceAccount
         endpoint: https://${env:K8S_NODE_NAME}:10250
@@ -88,25 +88,27 @@ data:
         collection_interval: 15s
 
     exporters:
-      otlp/hdx:
+      otlp_grpc/hdx:
         endpoint: 'clickstack:4317'
         headers:
           authorization: ${env:HYPERDX_API_KEY}
         tls:
           insecure: true
+        # Batching happens in the exporter's sending queue (the batch
+        # processor is deprecated). Needs collector 0.144.0 or later, which the
+        # 26.11.0 agent image has (pinned to 0.165.0 in its Dockerfile).
+        sending_queue:
+          enabled: true
+          batch: {}
       debug:
         verbosity: basic
-
-    processors:
-      batch:
 
     service:
       extensions: [health_check]
       pipelines:
         metrics:
-          receivers: [kubeletstats, k8s_cluster]
-          processors: [batch]
-          exporters: [otlp/hdx]
+          receivers: [kubelet_stats, k8s_cluster]
+          exporters: [otlp_grpc/hdx]
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -127,7 +129,7 @@ spec:
       serviceAccountName: otel-collector
       containers:
         - name: otel-collector
-          image: ghcr.io/clickhouse/clickstack-demo-subscription-app:26.4.0-otel-collector
+          image: ghcr.io/clickhouse/clickstack-demo-subscription-app:26.11.0-otel-collector
           ports:
             - { name: health, containerPort: 13133 }
           env:

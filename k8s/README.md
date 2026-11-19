@@ -15,14 +15,14 @@ Everything runs in the `clickstack-demo` namespace.
 | `subscription-app.yaml` | Flask app Deployment + ClusterIP Service (`8000`) |
 | `docs-loader.yaml` | Go docs-loader Deployment + Service |
 | `load-generator.yaml` | Locust load generator Deployment |
-| `otel-collector.yaml` | Infra-metrics collector (kubeletstats + k8s_cluster) with ServiceAccount + RBAC |
+| `otel-collector.yaml` | Infra-metrics collector (kubelet_stats + k8s_cluster) with ServiceAccount + RBAC |
 | `kustomization.yaml` | Ties it together + generates the `clickstack-secrets` Secret |
 
 ### Differences from docker-compose
 
 - **Infra metrics:** docker-compose used `socat` + the `docker_stats`
   receiver to read the Docker socket. Kubernetes has no Docker socket, so the
-  `otel-collector` here uses the K8s-native **`kubeletstats`** and
+  `otel-collector` here uses the K8s-native **`kubelet_stats`** and
   **`k8s_cluster`** receivers instead (with a ServiceAccount + ClusterRole).
   The `socat` service is gone.
 - The subscription app is reached via `kubectl port-forward` rather than a
@@ -32,6 +32,30 @@ Everything runs in the `clickstack-demo` namespace.
   read files above its own directory, so pointing at `../.env` would force
   `--load-restrictor LoadRestrictionsNone` onto every command. It's the same
   four keys, so `cp ../.env secret.env` works if you already ran compose.
+
+## Before you start: the images
+
+The manifests pull the app images from `ghcr.io`, and those are published for
+`linux/arm64` only. On an x86_64 (`amd64`) machine they fail with
+`exec format error`, so build them yourself first, from the repo root. Building
+them ahead of time also saves the wait on the day:
+
+```bash
+for s in subscription-app docs-loader load-generator otel-collector; do
+  docker build -t ghcr.io/clickhouse/clickstack-demo-subscription-app:26.11.0-$s ./$s
+done
+```
+
+The tags match the manifests, and Kubernetes uses an image that is already on
+the node instead of pulling it. For a local cluster such as kind or minikube,
+copy them into the cluster:
+
+```bash
+for s in subscription-app docs-loader load-generator otel-collector; do
+  kind load docker-image ghcr.io/clickhouse/clickstack-demo-subscription-app:26.11.0-$s
+  # minikube: minikube image load ghcr.io/clickhouse/clickstack-demo-subscription-app:26.11.0-$s
+done
+```
 
 ## Quick Start
 
@@ -58,7 +82,7 @@ Everything runs in the `clickstack-demo` namespace.
 
 5. **Edit secret.env with the connection information to your service**
 
-6. **Edit secret.env with your own HyperDX API key to securely ingest data**
+6. **Edit secret.env with your own ClickStack ingestion API key to securely ingest data**
 
 7. **Start all services**
    ```bash

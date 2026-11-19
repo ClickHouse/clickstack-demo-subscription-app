@@ -1,11 +1,11 @@
 # ClickHouse Subscription Demo App
 
-A Flask-based web application that showcases ClickHouse features while collecting user subscriptions. The app is fully instrumented with HyperDX OpenTelemetry for observability and monitoring.
+A Flask-based web application that showcases ClickHouse features while collecting user subscriptions. The backend (Python) and the docs loader (Go) are instrumented with the upstream OpenTelemetry SDKs, and the browser with the ClickStack browser SDK (`@hyperdx/browser`).
 
 ## Overview
 
 This project demonstrates ClickStack Observability through full OpenTelemetry instrumentation for monitoring and debugging, both in front-end (browser) and back-end (Python and Go).
-After the data is sent from the OpenTelemetry collector to ClickHouse, it is possible to use HyperDX to visualize data and get insights.
+After the data is sent from the OpenTelemetry collector to ClickHouse, it is possible to use ClickStack UI to visualize data and get insights.
 
 ## Architecture
 ![Architecture](architecture.png "Architecture")
@@ -36,7 +36,7 @@ After the data is sent from the OpenTelemetry collector to ClickHouse, it is pos
 
 5. **Edit .env with the connection information to your service**
 
-6. **Edit .env with your own HyperDX API key to securely ingest data**
+6. **Edit .env with your own ClickStack ingestion API key to securely ingest data**
 
 7. **Start all services**
    ```bash
@@ -45,6 +45,29 @@ After the data is sent from the OpenTelemetry collector to ClickHouse, it is pos
 
 8. **(Optional) Access the subscription app in your browser**
     - http://localhost:8000
+
+## Quick Start with ClickHouse Observability (fully managed)
+
+ClickHouse runs the gateway and the database, so this setup has neither. The app and the browser send to a local OTel agent, which forwards everything to your service.
+
+1. **Create an Observability service** in https://console.clickhouse.cloud, then open **Getting Started** → **View connection details** → **Env vars**.
+
+2. **Create a .env file** and paste the three `OTEL_EXPORTER_OTLP_*` lines as they are. See `.env.managed.example`.
+
+3. **Start all services**
+   ```bash
+   docker compose -f docker-compose.managed.yml up -d
+   ```
+   The app uses ports 8000 and 8001, and the agent listens on `localhost:4318` for the browser SDK.
+
+4. **Simulate a deploy** by setting `APP_VERSION` in `.env` (default `1.0.0`) and running step 3 again. Every span and log carries it as `service.version`. To make that version a bad deploy, also set `FAULT_LATENCY_MS` and `FAULT_ERROR_RATE`: signups slow down, a share of them fail, and a new warning appears in the logs. `/health` is never affected.
+
+5. **Burn error budget** by clicking **Docs** on a schedule, which crashes `docs-loader`:
+   ```bash
+   docker compose -f docker-compose.managed.yml up -d docs-burn
+   docker compose -f docker-compose.managed.yml stop docs-burn
+   ```
+   `DOCS_CLICKS_PER_MINUTE` (default 30) sets how hard it clicks.
 
 ## Contributing
 

@@ -27,6 +27,16 @@ RUN pip install --no-cache-dir --upgrade pip \
 # Install opentelemtery-bootstrap for auto-instrumentation
 RUN opentelemetry-bootstrap --action=install
 
+# OpenTelemetry defaults. The endpoint, headers, service name and resource
+# attributes come from the environment the container runs in.
+ENV OTEL_TRACES_EXPORTER=otlp \
+    OTEL_METRICS_EXPORTER=otlp \
+    OTEL_LOGS_EXPORTER=otlp \
+    OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf \
+    OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST=".*" \
+    OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE=".*" \
+    OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS="authorization,cookie,set-cookie"
+
 # Copy application code
 COPY flask_app.py .
 
