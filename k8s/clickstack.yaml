@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
         - name: clickstack
-          image: clickhouse/clickstack-otel-collector:2.19.0
+          image: clickhouse/clickstack-otel-collector:2.38.0
           ports:
             - { name: otlp-grpc, containerPort: 4317 }
             - { name: otlp-http, containerPort: 4318 }

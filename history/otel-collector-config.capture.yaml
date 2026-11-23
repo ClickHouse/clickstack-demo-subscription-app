@@ -1,0 +1,42 @@
+# Agent config for recording the app's telemetry to files instead of sending
+# it. The history generator replays these recordings; see README.md.
+
+extensions:
+  health_check:
+    endpoint: 0.0.0.0:13133
+
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+        cors:
+          allowed_origins:
+            - http://localhost:8000
+            - http://127.0.0.1:8000
+            - http://subscription-app:8000
+          allowed_headers:
+            - "*"
+
+processors:
+  batch:
+
+exporters:
+  file/traces:
+    path: /capture/traces.jsonl
+  file/logs:
+    path: /capture/logs.jsonl
+
+service:
+  extensions: [health_check]
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [file/traces]
+    logs:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [file/logs]

@@ -1,69 +1,114 @@
-
 package main
 
 import (
   "context"
+  "errors"
   "io"
   "log"
   "net/http"
   "os"
   "time"
 
-  "github.com/hyperdxio/opentelemetry-go/otelzap"
-  "github.com/hyperdxio/opentelemetry-logs-go/exporters/otlp/otlplogs"
-  "github.com/hyperdxio/otel-config-go/otelconfig"
+  "go.opentelemetry.io/contrib/bridges/otelzap"
+  "go.opentelemetry.io/contrib/instrumentation/host"
   "go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
-  "go.opentelemetry.io/otel/trace"
-  "go.uber.org/zap"
-  sdk "github.com/hyperdxio/opentelemetry-logs-go/sdk/logs"
-  semconv "go.opentelemetry.io/otel/semconv/v1.21.0"
+  "go.opentelemetry.io/contrib/instrumentation/runtime"
+  "go.opentelemetry.io/otel"
+  "go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploghttp"
+  "go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp"
+  "go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
+  "go.opentelemetry.io/otel/log/global"
+  "go.opentelemetry.io/otel/propagation"
+  sdklog "go.opentelemetry.io/otel/sdk/log"
+  sdkmetric "go.opentelemetry.io/otel/sdk/metric"
   "go.opentelemetry.io/otel/sdk/resource"
+  sdktrace "go.opentelemetry.io/otel/sdk/trace"
+  "go.uber.org/zap"
 )
 
-// configure common attributes for all logs
-func newResource() *resource.Resource {
-  hostName, _ := os.Hostname()
-  return resource.NewWithAttributes(
-    semconv.SchemaURL,
-    semconv.ServiceVersion("1.0.0"),
-    semconv.HostName(hostName),
-  )
-}
-
-// attach trace id to the log
-func WithTraceMetadata(ctx context.Context, logger *zap.Logger) *zap.Logger {
-  spanContext := trace.SpanContextFromContext(ctx)
-  if !spanContext.IsValid() {
-    // ctx does not contain a valid span.
-    // There is no trace metadata to add.
-    return logger
+// setupOpenTelemetry configures traces, metrics, and logs with the upstream
+// OpenTelemetry SDK. Everything is read from the standard OTEL_* environment
+// variables: OTEL_EXPORTER_OTLP_ENDPOINT, OTEL_EXPORTER_OTLP_HEADERS,
+// OTEL_SERVICE_NAME and OTEL_RESOURCE_ATTRIBUTES (for service.version).
+func setupOpenTelemetry(ctx context.Context) (shutdown func(context.Context) error, err error) {
+  var shutdowns []func(context.Context) error
+  shutdown = func(ctx context.Context) error {
+    var errs error
+    for _, fn := range shutdowns {
+      errs = errors.Join(errs, fn(ctx))
+    }
+    return errs
   }
-  return logger.With(
-    zap.String("trace_id", spanContext.TraceID().String()),
-    zap.String("span_id", spanContext.SpanID().String()),
+
+  res, err := resource.New(ctx,
+    resource.WithFromEnv(),
+    resource.WithTelemetrySDK(),
+    resource.WithHost(),
+    resource.WithProcess(),
   )
+  if err != nil {
+    return shutdown, err
+  }
+
+  otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
+    propagation.TraceContext{}, propagation.Baggage{}))
+
+  traceExporter, err := otlptracehttp.New(ctx)
+  if err != nil {
+    return shutdown, err
+  }
+  tracerProvider := sdktrace.NewTracerProvider(
+    sdktrace.WithBatcher(traceExporter),
+    sdktrace.WithResource(res),
+  )
+  shutdowns = append(shutdowns, tracerProvider.Shutdown)
+  otel.SetTracerProvider(tracerProvider)
+
+  metricExporter, err := otlpmetrichttp.New(ctx)
+  if err != nil {
+    return shutdown, err
+  }
+  meterProvider := sdkmetric.NewMeterProvider(
+    sdkmetric.WithReader(sdkmetric.NewPeriodicReader(metricExporter)),
+    sdkmetric.WithResource(res),
+  )
+  shutdowns = append(shutdowns, meterProvider.Shutdown)
+  otel.SetMeterProvider(meterProvider)
+
+  // Go runtime (memory, GC, goroutines) and host (CPU, memory, network) metrics
+  if err := runtime.Start(); err != nil {
+    return shutdown, err
+  }
+  if err := host.Start(); err != nil {
+    return shutdown, err
+  }
+
+  logExporter, err := otlploghttp.New(ctx)
+  if err != nil {
+    return shutdown, err
+  }
+  loggerProvider := sdklog.NewLoggerProvider(
+    sdklog.WithProcessor(sdklog.NewBatchProcessor(logExporter)),
+    sdklog.WithResource(res),
+  )
+  shutdowns = append(shutdowns, loggerProvider.Shutdown)
+  global.SetLoggerProvider(loggerProvider)
+
+  return shutdown, nil
 }
 
 func main() {
-  // Initialize otel config and use it across the entire app
-  otelShutdown, err := otelconfig.ConfigureOpenTelemetry()
-  if err != nil {
-    log.Fatalf("error setting up OTel SDK - %e", err)
-  }
-  defer otelShutdown()
-
   ctx := context.Background()
 
-  // configure opentelemetry logger provider
-  logExporter, _ := otlplogs.NewExporter(ctx)
-  loggerProvider := sdk.NewLoggerProvider(
-    sdk.WithBatcher(logExporter),
-  )
-  // gracefully shutdown logger to flush accumulated signals before program finish
-  defer loggerProvider.Shutdown(ctx)
+  otelShutdown, err := setupOpenTelemetry(ctx)
+  if err != nil {
+    log.Fatalf("error setting up OpenTelemetry: %v", err)
+  }
+  // gracefully shut down to flush accumulated signals before the program ends
+  defer otelShutdown(ctx)
 
-  // create new logger with opentelemetry zap core and set it globally
-  logger := zap.New(otelzap.NewOtelCore(loggerProvider))
+  // zap logger whose records go to OpenTelemetry, and set it globally
+  logger := zap.New(otelzap.NewCore("docs-loader"))
   zap.ReplaceGlobals(logger)
 
   http.Handle("/", otelhttp.NewHandler(wrapHandler(logger, Status), "/"))
@@ -80,13 +125,14 @@ func main() {
   }
 }
 
-// Use this to wrap all handlers to add trace metadata to the logger
+// Use this to wrap all handlers so their logs carry the request's trace context
 func wrapHandler(logger *zap.Logger, handler http.HandlerFunc) http.HandlerFunc {
   return func(w http.ResponseWriter, r *http.Request) {
-    logger := WithTraceMetadata(r.Context(), logger)
-    logger.Info("request received: " + r.Method + " " + r.URL.Path, zap.String("url", r.URL.Path), zap.String("method", r.Method))
+    // otelzap reads the trace and span IDs from a context.Context field
+    ctx := zap.Any("ctx", r.Context())
+    logger.Info("request received: "+r.Method+" "+r.URL.Path, ctx, zap.String("url", r.URL.Path), zap.String("method", r.Method))
     handler(w, r)
-    logger.Info("request completed: " + r.Method + " " + r.URL.Path, zap.String("path", r.URL.Path), zap.String("method", r.Method))
+    logger.Info("request completed: "+r.Method+" "+r.URL.Path, ctx, zap.String("path", r.URL.Path), zap.String("method", r.Method))
   }
 }
 
